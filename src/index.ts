@@ -1,5 +1,6 @@
 import yup from "yup";
-import _ from "lodash";
+import cloneDeep from "lodash/cloneDeep";
+import isEmpty from "lodash/isEmpty";
 import { update, assignDeep } from "./utils";
 import { writable, derived } from "svelte/store";
 
@@ -12,7 +13,7 @@ const createForm = config => {
   const validate = config.validate;
 
   const initial = {
-    values: () => _.cloneDeep(config.form),
+    values: () => cloneDeep(config.form),
     errors: () => assignDeep(config.form, DEFAULT_ERROR_VALUE),
     touched: () => assignDeep(config.form, DEFAULT_TOUCHED_VALUE)
   };
@@ -72,7 +73,7 @@ const createForm = config => {
         isValidating.set(true);
 
         const err = validate(values);
-        if (_.isEmpty(err)) {
+        if (isEmpty(err)) {
           resetErrorsAndSubmit(values);
         } else {
           errors.update(e => ({
