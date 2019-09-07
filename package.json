@@ -1,21 +1,36 @@
 {
   "name": "svelte-forms-lib",
-  "version": "0.0.1",
-  "description": "A library for creating forms in Svelte",
+  "version": "0.1.0",
+  "description": "A lightweight library for creating forms in Svelte",
   "scripts": {
     "start": "parcel src/index.ts",
-    "build": "parcel build src/index.ts --no-minify",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "parcel build src/index.ts",
+    "dev:examples": "parcel examples/basic/index.html",
+    "test": "jest",
+    "test:watch": "jest --watchAll"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Tjin Au Yeung",
+  "browserslist": [
+    "last 1 chrome versions"
+  ],
+  "main": "./dist/index.js",
+  "license": "MIT",
   "devDependencies": {
+    "@types/chance": "1.0.6",
+    "@types/jest": "24.0.18",
+    "@types/yup": "0.26.23",
+    "chance": "1.1.0",
+    "jest": "24.9.0",
     "parcel": "1.12.3",
-    "typescript": "3.6.2"
+    "parcel-bundler": "1.12.3",
+    "parcel-plugin-svelte": "4.0.4",
+    "ts-jest": "24.0.2",
+    "typescript": "3.6.2",
+    "yup": "0.27.0"
   },
   "dependencies": {
     "lodash": "4.17.15",
-    "svelte": "3.9.2",
-    "yup": "0.27.0"
+    "property-expr": "1.5.1",
+    "svelte": "3.9.2"
   }
 }

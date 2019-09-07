@@ -1,113 +1,120 @@
-import yup from "yup";
-import cloneDeep from "lodash/cloneDeep";
-import isEmpty from "lodash/isEmpty";
-import { update, assignDeep } from "./utils";
 import { writable, derived } from "svelte/store";
+import isEmpty from "lodash/isEmpty";
+import cloneDeep from "lodash/cloneDeep";
+import { ValidationError } from "yup";
+import { update, assignDeep, reach, getValues } from "./utils";
 
-const DEFAULT_ERROR_VALUE = "";
-const DEFAULT_TOUCHED_VALUE = false;
+const NO_ERROR = "";
+const IS_TOUCHED = true;
 
 const createForm = config => {
-  const schema = config.schema;
   const submit = config.submit;
+  const validationSchema = config.validationSchema;
   const validate = config.validate;
 
   const initial = {
     values: () => cloneDeep(config.form),
-    errors: () => assignDeep(config.form, DEFAULT_ERROR_VALUE),
-    touched: () => assignDeep(config.form, DEFAULT_TOUCHED_VALUE)
+    errors: () => assignDeep(config.form, NO_ERROR),
+    touched: () => assignDeep(config.form, !IS_TOUCHED)
   };
 
   const form = writable(initial.values());
   const errors = writable(initial.errors());
   const touched = writable(initial.touched());
 
-  const isSubmitting = writable(false);
-  const isValidating = writable(false);
-
-  const isValid = derived([errors, touched], ([$errors, $touched]) => {
-    // const noErrors = Object.values($errors).every(v => v === ""); // use better way to check for errors
-    // const allIsTouched = Object.values($touched).every(v => v === true); // use better way to check for touched
-    // return noErrors && allIsTouched;
-    return false;
+  let _form = {};
+  const unsubscribe = form.subscribe(f => {
+    _form = f;
   });
 
-  function handleChange(ev) {
-    const field = ev.target.name;
-    const value = ev.target.value;
+  const isSubmitting = writable<boolean>(false);
+  const isValidating = writable<boolean>(false);
 
-    console.log("changed");
+  const isValid = derived([errors, touched], ([$errors, $touched]): boolean => {
+    const allTouched = getValues($touched).every(field => field === IS_TOUCHED);
+    const noErrors = getValues($errors).every(field => field === NO_ERROR);
+    return allTouched && noErrors;
+  });
 
-    update(touched, field, true);
+  function updateField(field: string, value: any): void {
+    update(form, field, value);
+  }
 
-    if (schema) {
+  function updateTouched(field: string, value: boolean): void {
+    update(touched, field, value);
+  }
+
+  function handleChange(event: Event): void {
+    const { name: field, value } = event.target as
+      | HTMLInputElement
+      | HTMLTextAreaElement;
+
+    updateTouched(field, true);
+
+    if (validationSchema) {
       isValidating.set(true);
-      return yup
-        .reach(schema, field)
+      reach(validationSchema, field)
         .validate(value)
         .then(() => update(errors, field, ""))
         .catch(err => update(errors, field, err.message))
         .finally(() => {
-          update(form, field, value);
+          updateField(field, value);
           isValidating.set(false);
+        });
+      return;
+    }
+
+    updateField(field, value);
+  }
+
+  function handleSubmit(ev): void {
+    if (ev && ev.preventDefault) {
+      ev.preventDefault();
+    }
+
+    isSubmitting.set(true);
+
+    // if there is a custom validate function
+    // and use that instead of yup schema
+    if (validate !== undefined && typeof validate === "function") {
+      isValidating.set(true);
+
+      const err = validate(_form);
+      if (isEmpty(err)) {
+        clearErrorsAndSubmit();
+      } else {
+        errors.set(err);
+        isValidating.set(false);
+      }
+    }
+
+    // if there is yup schema use to validate
+    // and submit
+    if (validationSchema) {
+      isValidating.set(true);
+
+      return validationSchema
+        .validate(_form, { abortEarly: false })
+        .then(() => {
+          clearErrorsAndSubmit();
+        })
+        .catch((yupErrs: ValidationError) => {
+          console.log(yupErrs);
+          if (yupErrs && yupErrs.inner) {
+            yupErrs.inner.forEach(error =>
+              update(errors, error.path, error.message)
+            );
+          }
+        })
+        .finally(() => {
+          isValidating.set(false);
+          isSubmitting.set(false);
         });
     }
 
-    update(form, field, value);
-  }
-
-  function handleSubmit(ev) {
-    ev.preventDefault();
-
-    console.log("submitted");
-
-    isSubmitting.update(n => {
-      n = true;
-      return n;
-    });
-
-    const unsubscribe = form.subscribe(values => {
-      // if there is a custom validate function
-      // and use that instead of yup schema
-      if (validate !== undefined && typeof validate === "function") {
-        isValidating.set(true);
-
-        const err = validate(values);
-        if (isEmpty(err)) {
-          resetErrorsAndSubmit(values);
-        } else {
-          errors.update(e => ({
-            ...e,
-            ...err
-          }));
-        }
-
-        return setTimeout(() => {
-          unsubscribe();
-          isValidating.set(false);
-        });
-      }
-
-      // if there is yup schema use to validate
-      // and submit
-      if (schema) {
-        return schema
-          .validate(values, { abortEarly: false })
-          .then(() => resetErrorsAndSubmit(values))
-          .catch(yupErrors => {
-            yupErrors.inner.forEach(error =>
-              update(errors, error.path, error.message)
-            );
-          })
-          .finally(() => {
-            return setTimeout(() => unsubscribe());
-          });
-      }
-
-      // if no schema or validate fn is provided
-      // just submit and unsubscribe
-      return resetErrorsAndSubmit(values).then(() => unsubscribe());
-    });
+    // if no schema or validate fn is provided
+    // just submit and unsubscribe
+    clearErrorsAndSubmit();
   }
 
   function handleReset() {
@@ -116,10 +123,11 @@ const createForm = config => {
     touched.set(initial.touched());
   }
 
-  function resetErrorsAndSubmit(values) {
+  function clearErrorsAndSubmit() {
     return Promise.resolve()
-      .then(() => errors.set(initial.errors()))
-      .then(() => submit({ values, form, errors }));
+      .then(() => errors.set(assignDeep(_form, "")))
+      .then(() => submit({ values: _form, form, errors }))
+      .finally(() => isSubmitting.set(false));
   }
 
   return {
@@ -132,6 +140,9 @@ const createForm = config => {
     handleChange,
     handleSubmit,
     handleReset,
+    updateField,
+    updateTouched,
+    unsubscribe,
     state: derived(
       [form, errors, touched, isValid, isSubmitting, isValidating],
       ([$form, $errors, $touched, $isValid, $isSubmitting, $isValidating]) => ({
