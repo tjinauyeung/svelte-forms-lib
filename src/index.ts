@@ -99,7 +99,6 @@ const createForm = config => {
           clearErrorsAndSubmit();
         })
         .catch((yupErrs: ValidationError) => {
-          console.log(yupErrs);
           if (yupErrs && yupErrs.inner) {
             yupErrs.inner.forEach(error =>
               update(errors, error.path, error.message)
