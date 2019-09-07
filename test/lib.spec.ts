@@ -1,6 +1,6 @@
 import * as yup from "yup";
 import Chance from "chance";
-import makeForm from "../src/index";
+import { createForm } from "../src";
 
 const chance = new Chance();
 
@@ -11,16 +11,20 @@ describe("form", () => {
 
   beforeEach(() => {
     form = {
-      name: "foo" || chance.name(),
-      email: "foo@bar" || chance.email(),
-      country: "nl" || chance.country()
+      name: chance.name(),
+      email: chance.email(),
+      country: chance.country()
     };
     validationSchema = yup.object().shape({
       name: yup.string().required(),
       email: yup.number().required(),
       country: yup.string().required()
     });
-    instance = makeForm({ form, validationSchema });
+    instance = createForm({
+      initialValues: form,
+      validationSchema,
+      onSubmit: () => null
+    });
   });
 
   afterEach(() => instance.unsubscribe());

@@ -1,8 +1,6 @@
 # Svelte forms lib
 
-This is a light weight library to help state management for forms in Svelte.
-
----
+This is a lightweight library for managing forms in Svelte, with an Formik inspired API.
 
 ## Installation
 
@@ -18,19 +16,17 @@ npm install svelte-forms-lib
 
 ## Usage
 
-> [Try it out in the browser](https://codesandbox.io/s/n9095)
-
 ```svelte
 <script>
   import { createForm } from "svelte-forms-lib";
 
   const { form, handleChange, handleSubmit } = createForm({
-    form: {
+    initialValues: {
       name: "",
       email: ""
     },
-    submit: payload => {
-      // make request for payload
+    onSubmit: values => {
+      // make form submission request with `values`
     }
   })
 </script>
@@ -52,15 +48,15 @@ npm install svelte-forms-lib
     on:change={handleChange}
   />
 
-  <button>Submit</button>
+  <button type="submit">Submit</button>
 </form>
 ```
 
 The `createForm` function requires at minimum a form object which contains the initial state of the form.
 
-### Validation
+### Validation with Yup
 
-This library works best with `yup` for object validation
+This library works best with `yup` for object validation.
 
 ```svelte
 <script>
@@ -68,15 +64,15 @@ This library works best with `yup` for object validation
   import yup from "yup";
 
   const { form, errors, handleChange, handleSubmit } = createForm({
-    form: {
+    initialValues: {
       name: "",
       email: ""
     },
-    schema: yup.object().shape({
+    validationSchema: yup.object().shape({
       name: yup.string().required(),
       email: yup.string().email().required()
     }),
-    submit: payload => {
+    onSubmit: payload => {
       // make request for payload
     }
   })

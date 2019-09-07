@@ -1,18 +1,20 @@
 import { derived, writable } from "svelte/store";
 import { util } from "./util";
+import { Config, Form } from "./types";
 
 const NO_ERROR = "";
 const IS_TOUCHED = true;
 
-export const createForm = config => {
-  const validationSchema = config.schema;
-  const validateFn = config.validate;
-  const submitFn = config.submit;
+export const createForm = (config: Config): Form => {
+  const initialValues = config.initialValues;
+  const validationSchema = config.validationSchema;
+  const validateFn = config.onValidate;
+  const submitFn = config.onSubmit;
 
   const initial = {
-    values: () => util.cloneDeep(config.form),
-    errors: () => util.assignDeep(config.form, NO_ERROR),
-    touched: () => util.assignDeep(config.form, !IS_TOUCHED)
+    values: () => util.cloneDeep(initialValues),
+    errors: () => util.assignDeep(initialValues, NO_ERROR),
+    touched: () => util.assignDeep(initialValues, !IS_TOUCHED)
   };
 
   const form = writable(initial.values());
@@ -67,7 +69,7 @@ export const createForm = config => {
     updateField(field, value);
   }
 
-  function handleSubmit(ev): void {
+  function handleSubmit(ev) {
     if (ev && ev.preventDefault) {
       ev.preventDefault();
     }
@@ -136,8 +138,8 @@ export const createForm = config => {
     updateTouched,
     unsubscribe,
     state: derived(
-      [form, errors, touched, isValid, isSubmitting, isValidating],
-      ([$form, $errors, $touched, $isValid, $isSubmitting, $isValidating]) => ({
+      [form, errors, touched, isValid, isValidating, isSubmitting],
+      ([$form, $errors, $touched, $isValid, $isValidating, $isSubmitting]) => ({
         form: $form,
         errors: $errors,
         touched: $touched,
