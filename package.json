@@ -1,6 +1,6 @@
 {
   "name": "svelte-forms-lib",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A lightweight zero dependency library for creating forms in Svelte",
   "scripts": {
     "start": "rollup src/index.ts -c rollup.config.js",
