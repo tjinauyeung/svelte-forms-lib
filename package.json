@@ -5,6 +5,7 @@
   "scripts": {
     "start": "parcel src/index.ts",
     "build": "parcel build src/index.ts",
+    "prepare": "npm run build",
     "dev:examples": "parcel examples/basic/index.html",
     "test": "jest",
     "test:watch": "jest --watchAll"
