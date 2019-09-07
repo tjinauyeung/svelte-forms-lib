@@ -24,6 +24,9 @@
     "@types/yup": "0.26.23",
     "chance": "1.1.0",
     "jest": "24.9.0",
+    "rollup": "1.20.3",
+    "rollup-plugin-commonjs": "10.1.0",
+    "rollup-plugin-node-resolve": "5.2.0",
     "rollup-plugin-typescript": "1.0.1",
     "ts-jest": "24.0.2",
     "tslib": "1.10.0",
@@ -32,9 +35,6 @@
   },
   "dependencies": {
     "property-expr": "1.5.1",
-    "rollup": "1.20.3",
-    "rollup-plugin-commonjs": "10.1.0",
-    "rollup-plugin-node-resolve": "5.2.0",
     "svelte": "3.9.2"
   }
 }
