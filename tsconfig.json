@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "esModuleInterop": true,
-    "lib": ["es2019", "dom"]
+    "lib": ["es2019", "dom"],
+    "target": "es2019"
   }
 }

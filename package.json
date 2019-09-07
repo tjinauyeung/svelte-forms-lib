@@ -1,12 +1,11 @@
 {
   "name": "svelte-forms-lib",
   "version": "0.1.2",
-  "description": "A lightweight library for creating forms in Svelte",
+  "description": "A lightweight zero dependency library for creating forms in Svelte",
   "scripts": {
-    "start": "parcel src/index.ts",
-    "build": "parcel build src/index.ts",
+    "start": "rollup src/index.ts -c rollup.config.js",
+    "build": "rollup src/index.ts -c rollup.config.js",
     "prepare": "npm run build",
-    "dev:examples": "parcel examples/basic/index.html",
     "test": "jest",
     "test:watch": "jest --watchAll"
   },
@@ -25,16 +24,17 @@
     "@types/yup": "0.26.23",
     "chance": "1.1.0",
     "jest": "24.9.0",
-    "parcel": "1.12.3",
-    "parcel-bundler": "1.12.3",
-    "parcel-plugin-svelte": "4.0.4",
+    "rollup-plugin-typescript": "1.0.1",
     "ts-jest": "24.0.2",
+    "tslib": "1.10.0",
     "typescript": "3.6.2",
     "yup": "0.27.0"
   },
   "dependencies": {
-    "lodash": "4.17.15",
     "property-expr": "1.5.1",
+    "rollup": "1.20.3",
+    "rollup-plugin-commonjs": "10.1.0",
+    "rollup-plugin-node-resolve": "5.2.0",
     "svelte": "3.9.2"
   }
 }

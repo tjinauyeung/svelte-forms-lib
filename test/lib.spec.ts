@@ -1,14 +1,13 @@
 import * as yup from "yup";
-import { Schema } from "yup";
 import Chance from "chance";
-import makeForm from "../src";
+import makeForm from "../src/index";
 
 const chance = new Chance();
 
 describe("form", () => {
   let instance;
   let form;
-  let validationSchema: Schema<{}>;
+  let validationSchema;
 
   beforeEach(() => {
     form = {

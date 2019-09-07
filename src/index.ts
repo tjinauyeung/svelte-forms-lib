@@ -1,21 +1,18 @@
-import { writable, derived } from "svelte/store";
-import isEmpty from "lodash/isEmpty";
-import cloneDeep from "lodash/cloneDeep";
-import { ValidationError } from "yup";
-import { update, assignDeep, reach, getValues } from "./utils";
+import { derived, writable } from "svelte/store";
+import { util } from "./util";
 
 const NO_ERROR = "";
 const IS_TOUCHED = true;
 
-const createForm = config => {
-  const submit = config.submit;
-  const validationSchema = config.validationSchema;
-  const validate = config.validate;
+export const createForm = config => {
+  const validationSchema = config.schema;
+  const validateFn = config.validate;
+  const submitFn = config.submit;
 
   const initial = {
-    values: () => cloneDeep(config.form),
-    errors: () => assignDeep(config.form, NO_ERROR),
-    touched: () => assignDeep(config.form, !IS_TOUCHED)
+    values: () => util.cloneDeep(config.form),
+    errors: () => util.assignDeep(config.form, NO_ERROR),
+    touched: () => util.assignDeep(config.form, !IS_TOUCHED)
   };
 
   const form = writable(initial.values());
@@ -31,17 +28,19 @@ const createForm = config => {
   const isValidating = writable<boolean>(false);
 
   const isValid = derived([errors, touched], ([$errors, $touched]): boolean => {
-    const allTouched = getValues($touched).every(field => field === IS_TOUCHED);
-    const noErrors = getValues($errors).every(field => field === NO_ERROR);
+    const allTouched = util
+      .getValues($touched)
+      .every(field => field === IS_TOUCHED);
+    const noErrors = util.getValues($errors).every(field => field === NO_ERROR);
     return allTouched && noErrors;
   });
 
   function updateField(field: string, value: any): void {
-    update(form, field, value);
+    util.update(form, field, value);
   }
 
   function updateTouched(field: string, value: boolean): void {
-    update(touched, field, value);
+    util.update(touched, field, value);
   }
 
   function handleChange(event: Event): void {
@@ -53,10 +52,11 @@ const createForm = config => {
 
     if (validationSchema) {
       isValidating.set(true);
-      reach(validationSchema, field)
+      util
+        .reach(validationSchema, field)
         .validate(value)
-        .then(() => update(errors, field, ""))
-        .catch(err => update(errors, field, err.message))
+        .then(() => util.update(errors, field, ""))
+        .catch(err => util.update(errors, field, err.message))
         .finally(() => {
           updateField(field, value);
           isValidating.set(false);
@@ -74,45 +74,38 @@ const createForm = config => {
 
     isSubmitting.set(true);
 
-    // if there is a custom validate function
-    // and use that instead of yup schema
-    if (validate !== undefined && typeof validate === "function") {
+    if (typeof validateFn === "function") {
       isValidating.set(true);
 
-      const err = validate(_form);
-      if (isEmpty(err)) {
-        clearErrorsAndSubmit();
-      } else {
-        errors.set(err);
-        isValidating.set(false);
-      }
+      Promise.resolve()
+        .then(() => validateFn(_form))
+        .then(err => {
+          if (util.isEmpty(err)) {
+            clearErrorsAndSubmit();
+          } else {
+            errors.set(err);
+            isValidating.set(false);
+          }
+        });
     }
 
-    // if there is yup schema use to validate
-    // and submit
     if (validationSchema) {
       isValidating.set(true);
 
       return validationSchema
         .validate(_form, { abortEarly: false })
-        .then(() => {
-          clearErrorsAndSubmit();
-        })
-        .catch((yupErrs: ValidationError) => {
+        .then(() => clearErrorsAndSubmit())
+        .catch(yupErrs => {
           if (yupErrs && yupErrs.inner) {
             yupErrs.inner.forEach(error =>
-              update(errors, error.path, error.message)
+              util.update(errors, error.path, error.message)
             );
           }
-        })
-        .finally(() => {
-          isValidating.set(false);
           isSubmitting.set(false);
-        });
+        })
+        .finally(() => isValidating.set(false));
     }
 
-    // if no schema or validate fn is provided
-    // just submit and unsubscribe
     clearErrorsAndSubmit();
   }
 
@@ -124,8 +117,8 @@ const createForm = config => {
 
   function clearErrorsAndSubmit() {
     return Promise.resolve()
-      .then(() => errors.set(assignDeep(_form, "")))
-      .then(() => submit({ values: _form, form, errors }))
+      .then(() => errors.set(util.assignDeep(_form, "")))
+      .then(() => submitFn({ values: _form, form, errors }))
       .finally(() => isSubmitting.set(false));
   }
 
@@ -155,5 +148,3 @@ const createForm = config => {
     )
   };
 };
-
-export default createForm;
