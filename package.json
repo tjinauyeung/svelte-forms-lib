@@ -10,6 +10,9 @@
     "test": "jest",
     "test:watch": "jest --watchAll"
   },
+  "files": [
+    "dist"
+  ],
   "author": "Tjin Au Yeung",
   "browserslist": [
     "last 1 chrome versions"
