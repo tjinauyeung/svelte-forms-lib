@@ -5,7 +5,7 @@ import { Config, Form } from "./types";
 const NO_ERROR = "";
 const IS_TOUCHED = true;
 
-export const createForm = (config: Config): Form => {
+const createForm = (config: Config): Form => {
   const initialValues = config.initialValues;
   const validationSchema = config.validationSchema;
   const validateFn = config.validate;
@@ -150,3 +150,5 @@ export const createForm = (config: Config): Form => {
     )
   };
 };
+
+export default createForm;

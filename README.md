@@ -17,7 +17,7 @@ npm install svelte-forms-lib
 
 ```svelte
 <script>
-  import { createForm } from "svelte-forms-lib";
+  import createForm from "svelte-forms-lib";
 
   const { form, handleChange, handleSubmit } = createForm({
     initialValues: {
@@ -76,7 +76,7 @@ This library works best with [yup](https://github.com/jquense/yup) for form vali
 
 ```svelte
 <script>
-  import { createForm } from "svelte-forms-lib";
+  import createForm from "svelte-forms-lib";
   import yup from "yup";
 
   const { form, errors, handleChange, handleSubmit } = createForm({
@@ -127,7 +127,7 @@ Custom validation is also possible:
 
 ```svelte
 <script>
-  import { createForm } from "svelte-forms-lib";
+  import createForm from "svelte-forms-lib";
   import yup from "yup";
 
   const { form, errors, handleChange, handleSubmit } = createForm({
