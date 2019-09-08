@@ -1,4 +1,4 @@
-import createForm from "../src";
+import createForm from "../lib";
 import * as yup from "yup";
 import Chance from "chance";
 

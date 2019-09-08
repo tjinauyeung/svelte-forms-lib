@@ -1,9 +1,16 @@
 # Svelte forms lib
 
-This is a lightweight library for managing forms in Svelte, with an Formik inspired API.
+This is a lightweight library for managing forms in Svelte, with an [Formik](https://github.com/jaredpalmer/formik) inspired API.
 
 ## Examples
-See https://github.com/tjinauyeung/svelte-forms-lib-examples for examples.
+
+For examples see the [examples](https://github.com/tjinauyeung/svelte-forms-lib/tree/master/examples) folder in or run
+
+```bash
+npm run examples:start
+```
+
+open up in the browser to see the examples.
 
 ## Installation
 
@@ -182,3 +189,7 @@ Custom validation is also possible:
 ```
 
 Currently custom validation is only run when submitting the form. Field validation will be added in the near future.
+
+### Contributions
+
+Please feel free to submit any issue as means of feedback or create a PR for bug fixes / wanted features.

@@ -3,12 +3,15 @@
   "version": "0.1.10",
   "description": "A lightweight library for managing forms in Svelte v3",
   "scripts": {
-    "start": "rollup src/index.ts -c rollup.config.js",
-    "build": "NODE_ENV=production rollup src/index.ts -c rollup.config.js",
+    "start": "rollup -c rollup.config.js",
+    "build": "NODE_ENV=production rollup -c rollup.config.js",
     "prepare": "npm run build",
     "test": "jest",
     "test:watch": "jest --watchAll",
-    "format": "prettier --write src/**/*.{ts,css}"
+    "format": "prettier --write lib/**/*.{ts,css}",
+    "examples:build": "rollup -c rollup.examples.config.js -w",
+    "examples:serve": "sirv dist-examples --single --dev",
+    "examples:start": "run-p build examples:serve examples:build"
   },
   "files": [
     "dist"
@@ -24,7 +27,9 @@
   "main": "./dist/index.js",
   "license": "MIT",
   "dependencies": {
-    "property-expr": "1.5.1",
+    "property-expr": "1.5.1"
+  },
+  "peerDependencies": {
     "svelte": "3.9.2"
   },
   "devDependencies": {
@@ -35,11 +40,19 @@
     "husky": "3.0.5",
     "jest": "24.9.0",
     "lint-staged": "9.2.5",
+    "npm-run-all": "4.1.5",
     "prettier": "1.18.2",
     "rollup": "1.20.3",
+    "rollup-plugin-alias": "2.0.0",
     "rollup-plugin-commonjs": "10.1.0",
+    "rollup-plugin-livereload": "1.0.1",
     "rollup-plugin-node-resolve": "5.2.0",
+    "rollup-plugin-peer-deps-external": "2.2.0",
+    "rollup-plugin-svelte": "5.1.0",
+    "rollup-plugin-terser": "5.1.1",
     "rollup-plugin-typescript": "1.0.1",
+    "sirv-cli": "0.4.4",
+    "svelte": "3.10.0",
     "ts-jest": "24.0.2",
     "tslib": "1.10.0",
     "typescript": "3.6.2",

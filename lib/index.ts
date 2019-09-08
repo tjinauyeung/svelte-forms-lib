@@ -1,11 +1,11 @@
 import { derived, writable } from "svelte/store";
 import { util } from "./util";
-import { Config, Form } from "./types";
+import { FormConfig, FormState, FormValidationErrors, FormTouched } from "./types";
 
 const NO_ERROR = "";
 const IS_TOUCHED = true;
 
-const createForm = (config: Config): Form => {
+const createForm = (config: FormConfig): FormState => {
   const initialValues = config.initialValues;
   const validationSchema = config.validationSchema;
   const validateFn = config.validate;
@@ -13,8 +13,8 @@ const createForm = (config: Config): Form => {
 
   const initial = {
     values: () => util.cloneDeep(initialValues),
-    errors: () => util.assignDeep(initialValues, NO_ERROR),
-    touched: () => util.assignDeep(initialValues, !IS_TOUCHED)
+    errors: (): FormValidationErrors => util.assignDeep(initialValues, NO_ERROR),
+    touched: (): FormTouched => util.assignDeep(initialValues, !IS_TOUCHED)
   };
 
   const form = writable(initial.values());
@@ -30,25 +30,13 @@ const createForm = (config: Config): Form => {
   const isValidating = writable<boolean>(false);
 
   const isValid = derived([errors, touched], ([$errors, $touched]): boolean => {
-    const allTouched = util
-      .getValues($touched)
-      .every(field => field === IS_TOUCHED);
+    const allTouched = util.getValues($touched).every(field => field === IS_TOUCHED);
     const noErrors = util.getValues($errors).every(field => field === NO_ERROR);
     return allTouched && noErrors;
   });
 
-  function updateField(field: string, value: any): void {
-    util.update(form, field, value);
-  }
-
-  function updateTouched(field: string, value: boolean): void {
-    util.update(touched, field, value);
-  }
-
   function handleChange(event: Event): void {
-    const { name: field, value } = event.target as
-      | HTMLInputElement
-      | HTMLTextAreaElement;
+    const { name: field, value } = event.target as HTMLInputElement | HTMLTextAreaElement;
 
     updateTouched(field, true);
 
@@ -69,7 +57,7 @@ const createForm = (config: Config): Form => {
     updateField(field, value);
   }
 
-  function handleSubmit(ev) {
+  function handleSubmit(ev: Event) {
     if (ev && ev.preventDefault) {
       ev.preventDefault();
     }
@@ -79,7 +67,7 @@ const createForm = (config: Config): Form => {
     if (typeof validateFn === "function") {
       isValidating.set(true);
 
-      Promise.resolve()
+      return Promise.resolve()
         .then(() => validateFn(_form))
         .then(err => {
           if (util.isEmpty(err)) {
@@ -99,9 +87,7 @@ const createForm = (config: Config): Form => {
         .then(() => clearErrorsAndSubmit())
         .catch(yupErrs => {
           if (yupErrs && yupErrs.inner) {
-            yupErrs.inner.forEach(error =>
-              util.update(errors, error.path, error.message)
-            );
+            yupErrs.inner.forEach(error => util.update(errors, error.path, error.message));
           }
           isSubmitting.set(false);
         })
@@ -111,17 +97,31 @@ const createForm = (config: Config): Form => {
     clearErrorsAndSubmit();
   }
 
-  function handleReset() {
+  function handleReset(): void {
     form.set(initial.values());
     errors.set(initial.errors());
     touched.set(initial.touched());
   }
 
-  function clearErrorsAndSubmit() {
+  function clearErrorsAndSubmit(): Promise<any> {
     return Promise.resolve()
       .then(() => errors.set(util.assignDeep(_form, "")))
       .then(() => submitFn({ values: _form, form, errors }))
       .finally(() => isSubmitting.set(false));
+  }
+
+  /**
+   * Handler to imperatively update the value of a form field
+   */
+  function updateField(field: string, value: any): void {
+    util.update(form, field, value);
+  }
+
+  /**
+   * Handler to imperatively update the touched value of a form field
+   */
+  function updateTouched(field: string, value: boolean): void {
+    util.update(touched, field, value);
   }
 
   return {

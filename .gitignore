@@ -1,4 +1,5 @@
 dist
+dist-examples/bundle.*
 .DS_Store
 node_modules
 .cache

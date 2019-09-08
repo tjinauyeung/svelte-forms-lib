@@ -18,9 +18,7 @@ function isEmpty(obj) {
 function getValues(obj: object): string[] | number[] {
   let result = [];
   for (const key in obj) {
-    result = result.concat(
-      typeof obj[key] === "object" ? getValues(obj[key]) : obj[key]
-    );
+    result = result.concat(typeof obj[key] === "object" ? getValues(obj[key]) : obj[key]);
   }
   return result;
 }
@@ -51,8 +49,7 @@ function set(obj, path, value) {
       (acc, key, index) =>
         Object(acc[key]) === acc[key]
           ? acc[key]
-          : (acc[key] =
-              Math.abs(path[index + 1]) >> 0 === +path[index + 1] ? [] : {}),
+          : (acc[key] = Math.abs(path[index + 1]) >> 0 === +path[index + 1] ? [] : {}),
       obj
     );
   res[path[path.length - 1]] = value;
