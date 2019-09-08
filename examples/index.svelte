@@ -2,6 +2,7 @@
   import Basic from "./basic/Basic.svelte";
   import YupValidation from "./yup-validation/YupValidation.svelte";
   import CustomValidation from "./custom-validation/CustomValidation.svelte";
+  import FormArray from "./form-array/FormArray.svelte";
 
   let tab = "basic";
 
@@ -66,6 +67,7 @@
     <a href="#custom" class:active={tab === 'custom'} on:click={() => setTab('custom')}>
       Custom validation
     </a>
+    <a href="#array" class:active={tab === 'array'} on:click={() => setTab('array')}>Forms array</a>
   </nav>
 
   <main>
@@ -88,6 +90,15 @@
         Validation is only fired upon submission. Field validation coming soon.
       </p>
       <CustomValidation />
+    {/if}
+
+    {#if tab === 'array'}
+      <p class="note">
+        Example using dynamic form with adding and removing of new fields or objects. Validation and
+        values are persisted. Support for nested field targeting i.e.
+        <code>$forms.users[i].name</code>
+      </p>
+      <FormArray />
     {/if}
   </main>
 </div>

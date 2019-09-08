@@ -4,14 +4,14 @@
   "description": "A lightweight library for managing forms in Svelte v3",
   "scripts": {
     "start": "rollup -c rollup.config.js",
+    "start:examples": "run-p build  build:examples serve:examples",
     "build": "NODE_ENV=production rollup -c rollup.config.js",
+    "build:examples": "rollup -c rollup.examples.config.js -w",
     "prepare": "npm run build",
     "test": "jest",
     "test:watch": "jest --watchAll",
     "format": "prettier --write lib/**/*.{ts,css}",
-    "examples:build": "rollup -c rollup.examples.config.js -w",
-    "examples:serve": "sirv dist-examples --single --dev",
-    "examples:start": "run-p build examples:serve examples:build"
+    "serve:examples": "sirv dist-examples --single --dev"
   },
   "files": [
     "dist"

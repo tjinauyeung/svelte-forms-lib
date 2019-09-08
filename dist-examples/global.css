@@ -67,7 +67,7 @@ button {
   background-color: #f4f4f4;
   outline: none;
   display: block;
-  margin: 15px 0 40px;
+  margin-top: 15px;
   line-height: 1.4;
   padding: 5px 18px;
 }
@@ -81,4 +81,9 @@ pre {
 
 form {
   margin: 50px 0 70px;
+}
+
+fieldset {
+  border: none;
+  padding: 0;
 }
