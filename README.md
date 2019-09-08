@@ -191,6 +191,80 @@ Custom validation is also possible:
 
 Currently custom validation is only run when submitting the form. Field validation will be added in the near future.
 
+### Handling form arrays
+
+Svelte forms lib also support form arrays and nested fields. The name attribute in the inputs accept path like strings i.e. `users[1].name` which allow us to bind to nested properties if the form requires it. See example below. Validation still works as expected.
+
+```svelte
+<script>
+  import createForm from "svelte-forms-lib";
+  import yup from "yup";
+
+  const { form, errors, state, handleChange, handleSubmit, handleReset } = createForm({
+    initialValues: {
+      users: [
+        {
+          name: "",
+          email: ""
+        }
+      ]
+    },
+    validationSchema: yup.object().shape({
+      users: yup.array().of(
+        yup.object().shape({
+          name: yup.string().required(),
+          email: yup
+            .string()
+            .email()
+            .required()
+        })
+      )
+    }),
+    onSubmit: ({ values }) => {
+      console.log("make form request:", values);
+    }
+  });
+
+  const add = () => {
+    $form.users = $form.users.concat({ name: "", email: "" });
+    $errors.users = $errors.users.concat({ name: "", email: "" });
+  };
+
+  const remove = i => () => {
+    $form.users = $form.users.filter((u, j) => j !== i);
+    $errors.users = $errors.users.filter((u, j) => j !== i);
+  };
+</script>
+
+<form>
+  {#each $form.users as user, j}
+    <label>name</label>
+    <input
+      name={`users[${j}].name`}
+      on:change={handleChange}
+      bind:value={$form.users[j].name} />
+    {#if $errors.users[j].name}
+      <hint>{$errors.users[j].name}</hint>
+    {/if}
+
+    <label>email</label>
+    <input
+      name={`users[${j}].email`}
+      on:change={handleChange}
+      bind:value={$form.users[j].email} />
+    {#if $errors.users[j].email}
+      <hint>{$errors.users[j].email}</hint>
+    {/if}
+
+    <button on:click={add}>+</button>
+    <button on:click={remove(j)}>-</button>
+  {/each}
+
+  <button on:click={handleSubmit}>submit</button>
+  <button on:click={handleReset}>reset</button>
+</form>
+```
+
 ### Contributions
 
 Please feel free to submit any issue as means of feedback or create a PR for bug fixes / wanted features.
