@@ -1,6 +1,7 @@
-# Svelte forms lib
 
-This is a lightweight library for managing forms in Svelte, with an [Formik](https://github.com/jaredpalmer/formik) inspired API.
+<img src="./website/assets/logo.svg" height="40px;" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
+
+Svelte forms lib is a lightweight library for managing forms in Svelte, with an [Formik](https://github.com/jaredpalmer/formik) like API.
 
 ## Examples
 
