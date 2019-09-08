@@ -22,11 +22,16 @@
   },
   "main": "./dist/index.js",
   "license": "MIT",
+  "dependencies": {
+    "property-expr": "1.5.1",
+    "svelte": "3.9.2"
+  },
   "devDependencies": {
     "@types/chance": "1.0.6",
     "@types/jest": "24.0.18",
     "@types/yup": "0.26.23",
     "chance": "1.1.0",
+    "husky": "3.0.5",
     "jest": "24.9.0",
     "rollup": "1.20.3",
     "rollup-plugin-commonjs": "10.1.0",
@@ -37,8 +42,9 @@
     "typescript": "3.6.2",
     "yup": "0.27.0"
   },
-  "dependencies": {
-    "property-expr": "1.5.1",
-    "svelte": "3.9.2"
+  "husky": {
+    "hooks": {
+      "pre-push": "npm run test"
+    }
   }
 }
