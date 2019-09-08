@@ -1,6 +1,6 @@
+import createForm from "../src";
 import * as yup from "yup";
 import Chance from "chance";
-import { createForm } from "../src";
 
 const chance = new Chance();
 
