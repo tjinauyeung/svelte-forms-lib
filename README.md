@@ -241,8 +241,8 @@ Svelte forms lib also support form arrays and nested fields. The name attribute 
     <label>name</label>
     <input
       name={`users[${j}].name`}
-      on:change={handleChange}
-      bind:value={$form.users[j].name} />
+      bind:value={$form.users[j].name}
+      on:change={handleChange} />
     {#if $errors.users[j].name}
       <hint>{$errors.users[j].name}</hint>
     {/if}
@@ -250,8 +250,8 @@ Svelte forms lib also support form arrays and nested fields. The name attribute 
     <label>email</label>
     <input
       name={`users[${j}].email`}
-      on:change={handleChange}
-      bind:value={$form.users[j].email} />
+      bind:value={$form.users[j].email}
+      on:change={handleChange} />
     {#if $errors.users[j].email}
       <hint>{$errors.users[j].email}</hint>
     {/if}

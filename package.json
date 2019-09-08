@@ -20,6 +20,11 @@
   "browserslist": [
     "last 1 chrome versions"
   ],
+  "keywords": [
+    "svelte",
+    "forms",
+    "typescript"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/tjinauyeung/svelte-forms-lib"
