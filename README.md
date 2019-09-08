@@ -11,8 +11,7 @@ should be installed as one of your project's `dependencies`:
 npm install svelte-forms-lib
 ```
 
-> This package also depends on `svelte`. Please make sure you
-> have those installed as well.
+> This package also depends on `svelte`. Please make sure you have it installed as well.
 
 ## Usage
 

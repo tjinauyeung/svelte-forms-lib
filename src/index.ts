@@ -8,7 +8,7 @@ const IS_TOUCHED = true;
 export const createForm = (config: Config): Form => {
   const initialValues = config.initialValues;
   const validationSchema = config.validationSchema;
-  const validateFn = config.onValidate;
+  const validateFn = config.validate;
   const submitFn = config.onSubmit;
 
   const initial = {

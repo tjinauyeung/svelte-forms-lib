@@ -9,7 +9,7 @@ export type ValidationErrorMsg = string;
 export interface Config {
   initialValues: object;
   validationSchema: Schema<{}>;
-  onValidate?: (formValue: object) => ValidationErrors;
+  validate?: (formValue: object) => ValidationErrors;
   onSubmit: (formValue: object) => Promise<{}>;
 }
 
