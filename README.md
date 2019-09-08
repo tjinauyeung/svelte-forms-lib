@@ -2,6 +2,9 @@
 
 This is a lightweight library for managing forms in Svelte, with an Formik inspired API.
 
+## Examples
+See https://github.com/tjinauyeung/svelte-forms-lib-examples for examples.
+
 ## Installation
 
 This module is distributed via npm which is bundled with node and
