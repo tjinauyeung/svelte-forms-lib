@@ -220,8 +220,8 @@ Svelte forms lib also support form arrays and nested fields. The name attribute 
         })
       )
     }),
-    onSubmit: ({ values }) => {
-      console.log("make form request:", values);
+    onSubmit: values => {
+      // make form submission request with `values`
     }
   });
 

@@ -106,7 +106,7 @@ const createForm = (config: FormConfig): FormState => {
   function clearErrorsAndSubmit(): Promise<any> {
     return Promise.resolve()
       .then(() => errors.set(util.assignDeep(_form, "")))
-      .then(() => submitFn({ values: _form, form, errors }))
+      .then(() => submitFn(_form, form, errors))
       .finally(() => isSubmitting.set(false));
   }
 

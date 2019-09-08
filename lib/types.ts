@@ -15,7 +15,11 @@ export interface FormConfig {
   initialValues: object;
   validationSchema: Schema<{}>;
   validate?: (formValue: object) => FormValidationErrors;
-  onSubmit: (formValue: object) => Promise<{}>;
+  onSubmit: (
+    values: object,
+    form: Writable<object>,
+    errors: Writable<FormValidationErrors>
+  ) => Promise<{}>;
 }
 
 export interface FormState {
