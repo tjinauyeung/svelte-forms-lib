@@ -8,7 +8,7 @@ Svelte forms lib is a lightweight library for managing forms in Svelte, with an 
 For examples see the [examples](https://github.com/tjinauyeung/svelte-forms-lib/tree/master/examples) folder in or run
 
 ```bash
-npm run examples:start
+npm run start:examples
 ```
 
 open up in the browser to see the examples.
