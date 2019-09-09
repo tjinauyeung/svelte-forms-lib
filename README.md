@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="./website/assets/logo.png" height="160px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
+  <img src="./website/assets/logo.png" height="120px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
 </p>
 
 <p align="center">
