@@ -126,8 +126,6 @@ describe("createForm", () => {
     });
   });
 
-  describe("handleChange", () => {});
-
   describe("handleSubmit", () => {
     it("validates form on submit when validationSchema is provided", done => {
       instance = getInstance({
@@ -161,6 +159,7 @@ describe("createForm", () => {
 
     it("does not call onSubmit when form is invalid", done => {
       const onSubmit = jest.fn();
+      // create invalid form
       instance = getInstance({
         initialValues: { name: "" },
         onSubmit
