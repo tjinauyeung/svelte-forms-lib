@@ -1,5 +1,5 @@
 
-<p align="center" style="margin: 40px 0">
+<p style="margin: 40px 0; text-align: center">
   <img src="./website/assets/logo.png" height="40px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
 </p>
 
