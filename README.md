@@ -1,5 +1,7 @@
 
-<img src="./website/assets/logo.png" height="40px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
+<p align="center" style="margin: 40px 0">
+  <img src="./website/assets/logo.png" height="40px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
+</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/svelte-forms-lib">
@@ -22,7 +24,9 @@
   </a>
 </p>
 
-Svelte forms lib is a lightweight library for managing forms in Svelte, with an [Formik](https://github.com/jaredpalmer/formik) like API.
+<p align="center">
+  Svelte forms lib is a lightweight library for managing forms in Svelte, with an [Formik](https://github.com/jaredpalmer/formik) like API.
+</p>
 
 ## Examples
 
