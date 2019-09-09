@@ -1,15 +1,24 @@
 import { derived, writable } from "svelte/store";
 import { util } from "./util";
-import { FormConfig, FormState, FormValidationErrors, FormTouched } from "./types";
+import { FormConfig, FormInstance, FormValidationErrors, FormTouched } from "./types";
 
 const NO_ERROR = "";
 const IS_TOUCHED = true;
 
-const createForm = (config: FormConfig): FormState => {
-  const initialValues = config.initialValues;
+const createForm = (config: FormConfig): FormInstance | void => {
+  const initialValues = config.initialValues || {};
+
+  if (Object.keys(initialValues).length < 1) {
+    const provided = JSON.stringify(initialValues);
+    console.warn(
+      `createForm requires initialValues to be a non empty object or array, provided ${provided}`
+    );
+    return;
+  }
+
   const validationSchema = config.validationSchema;
   const validateFn = config.validate;
-  const submitFn = config.onSubmit;
+  const onSubmit = config.onSubmit;
 
   const initial = {
     values: () => util.cloneDeep(initialValues),
@@ -106,7 +115,7 @@ const createForm = (config: FormConfig): FormState => {
   function clearErrorsAndSubmit(): Promise<any> {
     return Promise.resolve()
       .then(() => errors.set(util.assignDeep(_form, "")))
-      .then(() => submitFn(_form, form, errors))
+      .then(() => onSubmit(_form, form, errors))
       .finally(() => isSubmitting.set(false));
   }
 

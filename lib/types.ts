@@ -13,16 +13,16 @@ export interface FormTouched {
 
 export interface FormConfig {
   initialValues: object;
-  validationSchema: Schema<{}>;
-  validate?: (formValue: object) => FormValidationErrors;
+  validationSchema?: Schema<{}>;
+  validate?: (formValue: any) => FormValidationErrors;
   onSubmit: (
     values: object,
-    form: Writable<object>,
-    errors: Writable<FormValidationErrors>
-  ) => Promise<{}>;
+    form?: Writable<object>,
+    errors?: Writable<FormValidationErrors>
+  ) => any;
 }
 
-export interface FormState {
+export interface FormInstance {
   form: Writable<object>;
   errors: Writable<FormValidationErrors>;
   touched: Writable<object>;
