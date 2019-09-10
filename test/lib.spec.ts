@@ -126,6 +126,21 @@ describe("createForm", () => {
     });
   });
 
+  describe("handleChange", () => {
+    it("updates the form when connected to change handler of input", () => {
+      subscribeOnce(instance.form).then(form => expect(form.email).toBe(initialValues.email));
+      const email = chance.email();
+      const event = {
+        target: {
+          name: "email",
+          value: email
+        }
+      };
+      instance.handleChange(event);
+      subscribeOnce(instance.form).then(form => expect(form.email).toBe(email));
+    });
+  });
+
   describe("handleSubmit", () => {
     it("validates form on submit when validationSchema is provided", done => {
       instance = getInstance({
