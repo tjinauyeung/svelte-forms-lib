@@ -28,6 +28,8 @@
   Svelte forms lib is a lightweight library for managing forms in Svelte, with an <a href="https://github.com/jaredpalmer/formik" target="_blank">Formik</a> like API.
 </p>
 
+> Currently this library is still work in progress; the API is likely to change until the release of V1. Use accordingly.
+
 ## Examples
 
 For examples see the [examples](https://github.com/tjinauyeung/svelte-forms-lib/tree/master/examples) folder in or run
@@ -103,6 +105,23 @@ Within the template they can be read using the `$` prefix i.e. `$form`, `$errors
 ```svelte
 <p>This form is {$isValid} </p>
 ```
+
+Another example regarding form or errors:
+
+```svelte
+<script>
+  const { form, errors, ...other } = createForm({...other});
+</script>
+
+<input name="name" bind:value={$form.name} ...other />
+{#if $errors.name}
+  <span>{$errors.name}</span>
+{/if}
+```
+
+> The code example below is abbreviated for focus, `...other` represents the remaining handlers, config and props needed to run the code.
+
+So make sure to use the `$` prefix in the template for observable values returned by `createForm`.
 
 ## Validation
 
@@ -288,6 +307,24 @@ Svelte forms lib also support form arrays and nested fields. The name attribute 
   <button on:click={handleSubmit}>submit</button>
   <button on:click={handleReset}>reset</button>
 </form>
+```
+
+### updateField 
+
+For imperative 3rd party libraries `createForm` also return an `updateField` function. The function accepts a `name` and `value` in order to update a field of the form. It serves as an escape hatch.
+
+```svelte
+<button on:change={() => updateField('receiveNewsletter', true)}>
+  receive newsletter
+</button>
+```
+
+which results in the form:
+
+```
+{
+  receiveNewsletter: true
+}
 ```
 
 ### Contributions
