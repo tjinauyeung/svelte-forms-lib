@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="./website/assets/logo.png" height="120px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
+  <img src="./website/assets/logo.png" width="500px" height="80px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
 </p>
 
 <p align="center">
@@ -27,8 +27,6 @@
 <p align="center">
   Svelte forms lib is a lightweight library for managing forms in Svelte, with an <a href="https://github.com/jaredpalmer/formik" target="_blank">Formik</a> like API.
 </p>
-
-> Currently this library is still work in progress; the API is likely to change until the release of V1. Use accordingly.
 
 ## Examples
 
@@ -309,7 +307,7 @@ Svelte forms lib also support form arrays and nested fields. The name attribute 
 </form>
 ```
 
-### updateField 
+### `updateField` - hook to update form field
 
 For imperative 3rd party libraries `createForm` also return an `updateField` function. The function accepts a `name` and `value` in order to update a field of the form. It serves as an escape hatch.
 

@@ -1,7 +1,7 @@
 {
   "name": "svelte-forms-lib",
   "version": "0.1.20",
-  "description": "A lightweight library for managing forms in Svelte v3",
+  "description": "Svelte forms lib - A lightweight library for managing forms in Svelte v3",
   "scripts": {
     "start": "rollup -c rollup.config.js",
     "start:examples": "run-p build  build:examples serve:examples",
@@ -23,6 +23,8 @@
   "keywords": [
     "svelte",
     "forms",
+    "validation",
+    "form-validation",
     "typescript"
   ],
   "repository": {
