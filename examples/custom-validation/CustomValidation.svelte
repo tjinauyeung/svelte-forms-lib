@@ -17,7 +17,7 @@
       }
       return errs;
     },
-    onSubmit: ({ values }) => {
+    onSubmit: values => {
       console.log("make form request:", values);
     }
   });
@@ -33,21 +33,13 @@
 
 <form on:submit={handleSubmit}>
   <label for="name">name</label>
-  <input
-    id="name"
-    name="name"
-    on:change={handleChange}
-    bind:value={$form.name} />
+  <input id="name" name="name" on:change={handleChange} bind:value={$form.name} />
   {#if $errors.name}
     <hint class="error">{$errors.name}</hint>
   {/if}
 
   <label for="email">email</label>
-  <input
-    id="email"
-    name="email"
-    on:change={handleChange}
-    bind:value={$form.email} />
+  <input id="email" name="email" on:change={handleChange} bind:value={$form.email} />
   {#if $errors.email}
     <hint class="error">{$errors.email}</hint>
   {/if}

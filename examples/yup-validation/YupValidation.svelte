@@ -14,7 +14,7 @@
         .email()
         .required()
     }),
-    onSubmit: ({ values }) => {
+    onSubmit: values => {
       console.log("make form request:", values);
     }
   });

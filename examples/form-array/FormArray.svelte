@@ -22,7 +22,7 @@
         })
       )
     }),
-    onSubmit: ({ values }) => {
+    onSubmit: values => {
       console.log("make form request:", values);
     }
   });
@@ -91,17 +91,17 @@
       </div>
 
       {#if j === $form.users.length - 1}
-        <button class="push-right" on:click={add}>+</button>
+        <button type="button" class="push-right" on:click={add}>+</button>
       {/if}
       {#if $form.users.length !== 1}
-        <button on:click={remove(j)}>-</button>
+        <button type="button" on:click={remove(j)}>-</button>
       {/if}
     </div>
   {/each}
 
   <div class="flex">
-    <button class="push-right" on:click={handleSubmit}>submit</button>
-    <button on:click={handleReset}>reset</button>
+    <button type="button" class="push-right" on:click={handleSubmit}>submit</button>
+    <button type="button" on:click={handleReset}>reset</button>
   </div>
 </form>
 

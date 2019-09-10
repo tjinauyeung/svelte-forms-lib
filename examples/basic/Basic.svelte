@@ -7,7 +7,7 @@
       name: "",
       email: ""
     },
-    onSubmit: ({ values }) => {
+    onSubmit: values => {
       console.log("make form request:", values);
       submitted = true;
     }
@@ -16,18 +16,10 @@
 
 <form on:submit={handleSubmit}>
   <label for="name">name</label>
-  <input
-    id="name"
-    name="name"
-    on:change={handleChange}
-    bind:value={$form.name} />
+  <input id="name" name="name" on:change={handleChange} bind:value={$form.name} />
 
   <label for="email">email</label>
-  <input
-    id="email"
-    name="email"
-    on:change={handleChange}
-    bind:value={$form.email} />
+  <input id="email" name="email" on:change={handleChange} bind:value={$form.email} />
 
   <button type="submit">{submitted ? 'form submitted!' : 'submit'}</button>
 </form>

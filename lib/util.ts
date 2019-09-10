@@ -1,5 +1,11 @@
 import { forEach } from "property-expr";
 
+function subscribeOnce(observable): Promise<any> {
+  return new Promise(resolve => {
+    observable.subscribe(resolve)(); // immediately invoke to unsubscribe
+  });
+}
+
 function update(obj, path, val) {
   obj.update(o => {
     set(o, path, val);
@@ -103,6 +109,7 @@ function getIn(schema, path, value, context) {
 }
 
 export const util = {
+  subscribeOnce,
   update,
   cloneDeep,
   isEmpty,

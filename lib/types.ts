@@ -34,7 +34,6 @@ export interface FormInstance {
   handleReset: (event?: Event) => void;
   updateField: (field: string, value: string | number | boolean) => void;
   updateTouched: (field: string, value: string | number | boolean) => void;
-  unsubscribe: () => void;
   state: Readable<{
     form: object;
     errors: FormValidationErrors;

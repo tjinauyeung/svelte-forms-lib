@@ -43,8 +43,6 @@ describe("createForm", () => {
     instance = getInstance();
   });
 
-  afterEach(() => instance.unsubscribe());
-
   describe("config", () => {
     it("requires initialValues to be provided and not to be empty", () => {
       const consoleWarn = jest.spyOn(console, "warn").mockImplementation();

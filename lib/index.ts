@@ -30,11 +30,6 @@ const createForm = (config: FormConfig): FormInstance | void => {
   const errors = writable(initial.errors());
   const touched = writable(initial.touched());
 
-  let _form = {};
-  const unsubscribe = form.subscribe(f => {
-    _form = f;
-  });
-
   const isSubmitting = writable<boolean>(false);
   const isValidating = writable<boolean>(false);
 
@@ -72,37 +67,39 @@ const createForm = (config: FormConfig): FormInstance | void => {
 
     isSubmitting.set(true);
 
-    if (typeof validateFn === "function") {
-      isValidating.set(true);
+    return util.subscribeOnce(form).then(values => {
+      if (typeof validateFn === "function") {
+        isValidating.set(true);
 
-      return Promise.resolve()
-        .then(() => validateFn(_form))
-        .then(err => {
-          if (util.isEmpty(err)) {
-            clearErrorsAndSubmit();
-          } else {
-            errors.set(err);
-            isValidating.set(false);
-          }
-        });
-    }
+        return Promise.resolve()
+          .then(() => validateFn(values))
+          .then(err => {
+            if (util.isEmpty(err)) {
+              clearErrorsAndSubmit(values);
+            } else {
+              errors.set(err);
+              isValidating.set(false);
+            }
+          });
+      }
 
-    if (validationSchema) {
-      isValidating.set(true);
+      if (validationSchema) {
+        isValidating.set(true);
 
-      return validationSchema
-        .validate(_form, { abortEarly: false })
-        .then(() => clearErrorsAndSubmit())
-        .catch(yupErrs => {
-          if (yupErrs && yupErrs.inner) {
-            yupErrs.inner.forEach(error => util.update(errors, error.path, error.message));
-          }
-          isSubmitting.set(false);
-        })
-        .finally(() => isValidating.set(false));
-    }
+        return validationSchema
+          .validate(values, { abortEarly: false })
+          .then(() => clearErrorsAndSubmit(values))
+          .catch(yupErrs => {
+            if (yupErrs && yupErrs.inner) {
+              yupErrs.inner.forEach(error => util.update(errors, error.path, error.message));
+            }
+            isSubmitting.set(false);
+          })
+          .finally(() => isValidating.set(false));
+      }
 
-    clearErrorsAndSubmit();
+      clearErrorsAndSubmit(values);
+    });
   }
 
   function handleReset(): void {
@@ -111,10 +108,10 @@ const createForm = (config: FormConfig): FormInstance | void => {
     touched.set(initial.touched());
   }
 
-  function clearErrorsAndSubmit(): Promise<any> {
+  function clearErrorsAndSubmit(values): Promise<any> {
     return Promise.resolve()
-      .then(() => errors.set(util.assignDeep(_form, "")))
-      .then(() => onSubmit(_form, form, errors))
+      .then(() => errors.set(util.assignDeep(values, "")))
+      .then(() => onSubmit(values, form, errors))
       .finally(() => isSubmitting.set(false));
   }
 
@@ -144,7 +141,6 @@ const createForm = (config: FormConfig): FormInstance | void => {
     handleReset,
     updateField,
     updateTouched,
-    unsubscribe,
     state: derived(
       [form, errors, touched, isValid, isValidating, isSubmitting],
       ([$form, $errors, $touched, $isValid, $isValidating, $isSubmitting]) => ({
