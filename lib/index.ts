@@ -51,7 +51,7 @@ const createForm = (config: FormConfig): FormInstance | void => {
 
     if (validationSchema) {
       isValidating.set(true);
-      util
+      return util
         .reach(validationSchema, field)
         .validate(value)
         .then(() => util.update(errors, field, ""))
@@ -60,7 +60,6 @@ const createForm = (config: FormConfig): FormInstance | void => {
           updateField(field, value);
           isValidating.set(false);
         });
-      return;
     }
 
     updateField(field, value);

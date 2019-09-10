@@ -100,6 +100,39 @@ describe("createForm", () => {
     });
   });
 
+  describe("$isValid", () => {
+    it("returns an observable with a subscribe method", () => {
+      expect(instance.isValid.subscribe).toBeDefined();
+    });
+
+    it("returns false if form is invalid", () => {
+      instance = getInstance({
+        name: "",
+        email: "",
+        country: ""
+      });
+      subscribeOnce(instance.isValid).then(isValid => expect(isValid).toBe(false));
+    });
+
+    it("returns false if some fields are untouched", async () => {
+      const touched = await subscribeOnce(instance.touched);
+      const someUntouched = Object.values(touched).some(val => val === false);
+      expect(someUntouched).toBe(true);
+
+      const isValid = await subscribeOnce(instance.isValid);
+      expect(isValid).toBe(false);
+    });
+
+    it("returns true if form is valid and all fields touched", () => {
+      instance.touched.set({
+        name: true,
+        email: true,
+        country: true
+      });
+      subscribeOnce(instance.isValid).then(isValid => expect(isValid).toBe(true));
+    });
+  });
+
   describe("handleReset", () => {
     it("resets form to initial state", () => {
       instance.form.set({ name: "foo" });
@@ -127,7 +160,7 @@ describe("createForm", () => {
   });
 
   describe("handleChange", () => {
-    it("updates the form when connected to change handler of input", () => {
+    it("updates the form when connected to change handler of input", done => {
       subscribeOnce(instance.form).then(form => expect(form.email).toBe(initialValues.email));
       const email = chance.email();
       const event = {
@@ -136,8 +169,26 @@ describe("createForm", () => {
           value: email
         }
       };
-      instance.handleChange(event);
-      subscribeOnce(instance.form).then(form => expect(form.email).toBe(email));
+      instance
+        .handleChange(event)
+        .then(() => subscribeOnce(instance.form))
+        .then(form => expect(form.email).toBe(email))
+        .then(done);
+    });
+
+    it("runs field validation when called", done => {
+      const invalid = "invalid.email";
+      const event = {
+        target: {
+          name: "email",
+          value: invalid
+        }
+      };
+      instance
+        .handleChange(event)
+        .then(() => subscribeOnce(instance.errors))
+        .then(errors => expect(errors.email).toBe("this must be a valid email"))
+        .then(done);
     });
   });
 
