@@ -25,7 +25,7 @@
 </p>
 
 <p align="center">
-  Svelte forms lib is a lightweight library for managing forms in Svelte, with an [Formik](https://github.com/jaredpalmer/formik) like API.
+  Svelte forms lib is a lightweight library for managing forms in Svelte, with an <a href="https://github.com/jaredpalmer/formik" target="_blank">Formik</a> like API.
 </p>
 
 ## Examples
