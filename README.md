@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="./website/assets/logo.png" width="500px" height="80px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
+  <img src="./website/assets/logo-svelte-forms-lib.png" width="400px" height="80px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
 </p>
 
 <p align="center">
@@ -16,11 +16,6 @@
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/npm/l/svelte-forms-lib.svg" alt="license">
   </a>
-  <a href="https://github.com/tjinauyeung/svelte-forms-lib/issues">
-    <img src="https://img.shields.io/github/issues/tjinauyeung/svelte-forms-lib.svg" alt="issues">
-  </a>
-  <a href="https://github.com/tjinauyeung/svelte-forms-lib/pulls">
-    <img src="https://img.shields.io/github/issues-pr/tjinauyeung/svelte-forms-lib.svg" alt="pull requests">
   </a>
 </p>
 
@@ -319,7 +314,7 @@ For imperative 3rd party libraries `createForm` also return an `updateField` fun
 
 which results in the form:
 
-```
+```js
 {
   receiveNewsletter: true
 }
