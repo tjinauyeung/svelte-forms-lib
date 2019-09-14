@@ -7,4 +7,10 @@
   const { form, handleChange } = getContext(key);
 </script>
 
-<input type="text" {name} bind:value={$form[name]} on:change={handleChange} {...$$props} />
+<input
+  type="text"
+  {name}
+  bind:value={$form[name]}
+  on:change={handleChange}
+  on:blur={handleChange}
+  {...$$props} />
