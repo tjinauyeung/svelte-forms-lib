@@ -1,8 +1,9 @@
 <script>
-  import Basic from "./basic/Basic.svelte";
-  import YupValidation from "./yup-validation/YupValidation.svelte";
-  import CustomValidation from "./custom-validation/CustomValidation.svelte";
-  import FormArray from "./form-array/FormArray.svelte";
+  import Basic from "./components/Basic.svelte";
+  import YupValidation from "./components/YupValidation.svelte";
+  import CustomValidation from "./components/CustomValidation.svelte";
+  import FormArray from "./components/FormArray.svelte";
+  import Helpers from "./components/Helpers.svelte";
 
   let tab = "basic";
 
@@ -68,6 +69,9 @@
       Custom validation
     </a>
     <a href="#array" class:active={tab === 'array'} on:click={() => setTab('array')}>Forms array</a>
+    <a href="#helpers" class:active={tab === 'helpers'} on:click={() => setTab('helpers')}>
+      Helper components
+    </a>
   </nav>
 
   <main>
@@ -99,6 +103,11 @@
         <code>$forms.users[i].name</code>
       </p>
       <FormArray />
+    {/if}
+
+    {#if tab === 'helpers'}
+      <p class="note">Example Form, Field and ErrorMessage helper components.</p>
+      <Helpers />
     {/if}
   </main>
 </div>

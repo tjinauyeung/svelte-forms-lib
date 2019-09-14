@@ -1,25 +1,20 @@
-import typescript from "rollup-plugin-typescript";
-import resolve from "rollup-plugin-node-resolve";
 import commonjs from "rollup-plugin-commonjs";
-
-import pkg from "./package.json";
+import resolve from "rollup-plugin-node-resolve";
+import svelte from "rollup-plugin-svelte";
 
 export default {
-  input: "./lib/index.ts",
+  input: "./lib/index.js",
   output: [
     {
-      file: pkg.main,
-      format: "umd",
-      name: "index",
-      sourcemap: true
+      file: `./dist/index.mjs`,
+      format: "esm",
+      paths: id => id.startsWith("svelte/") && `${id.replace("svelte", ".")}`
+    },
+    {
+      file: `./dist/index.js`,
+      format: "cjs",
+      paths: id => id.startsWith("svelte/") && `${id.replace("svelte", ".")}`
     }
   ],
-  plugins: [
-    typescript(),
-    resolve({
-      browser: true,
-      dedupe: importee => importee === "svelte" || importee.startsWith("svelte/")
-    }),
-    commonjs()
-  ]
+  plugins: [svelte(), resolve(), commonjs()]
 };

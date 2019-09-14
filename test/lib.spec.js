@@ -1,14 +1,14 @@
-import createForm from "../lib";
-import * as yup from "yup";
-import Chance from "chance";
+const { createForm } = require("../dist");
+const yup = require("yup");
+const Chance = require("chance");
 
 const chance = new Chance();
 
-function nonEmpty(array: string[]) {
+function nonEmpty(array) {
   return array.filter(str => str !== "");
 }
 
-function subscribeOnce(observable): Promise<any> {
+function subscribeOnce(observable) {
   return new Promise(resolve => {
     observable.subscribe(resolve)(); // immediately invoke to unsubscribe
   });
@@ -31,7 +31,7 @@ describe("createForm", () => {
   });
   let onSubmit = jest.fn();
 
-  function getInstance(options: any = {}) {
+  function getInstance(options = {}) {
     return createForm({
       initialValues: options.initialValues || initialValues,
       validationSchema: options.validationSchema || validationSchema,

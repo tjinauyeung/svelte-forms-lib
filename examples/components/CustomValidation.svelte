@@ -1,5 +1,5 @@
 <script>
-  import createForm from "svelte-forms-lib";
+  import { createForm } from "svelte-forms-lib";
   import yup from "yup";
 
   const { form, errors, state, handleChange, handleSubmit } = createForm({
@@ -7,13 +7,16 @@
       name: "",
       email: ""
     },
-    validationSchema: yup.object().shape({
-      name: yup.string().required(),
-      email: yup
-        .string()
-        .email()
-        .required()
-    }),
+    validate: values => {
+      let errs = {};
+      if (values.name === "") {
+        errs["name"] = "custom validation: name is required";
+      }
+      if (values.email === "") {
+        errs["email"] = "custom validation: email is required";
+      }
+      return errs;
+    },
     onSubmit: values => {
       console.log("make form request:", values);
     }
@@ -30,23 +33,13 @@
 
 <form on:submit={handleSubmit}>
   <label for="name">name</label>
-  <input
-    id="name"
-    name="name"
-    on:change={handleChange}
-    on:blur={handleChange}
-    bind:value={$form.name} />
+  <input id="name" name="name" on:change={handleChange} bind:value={$form.name} />
   {#if $errors.name}
     <hint class="error">{$errors.name}</hint>
   {/if}
 
   <label for="email">email</label>
-  <input
-    id="email"
-    name="email"
-    on:change={handleChange}
-    on:blur={handleChange}
-    bind:value={$form.email} />
+  <input id="email" name="email" on:change={handleChange} bind:value={$form.email} />
   {#if $errors.email}
     <hint class="error">{$errors.email}</hint>
   {/if}

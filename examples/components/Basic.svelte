@@ -1,6 +1,5 @@
 <script>
-  import createForm from "svelte-forms-lib";
-  let submitted = false;
+  import { createForm } from "svelte-forms-lib";
 
   const { form, state, handleChange, handleSubmit } = createForm({
     initialValues: {
@@ -9,7 +8,6 @@
     },
     onSubmit: values => {
       console.log("make form request:", values);
-      submitted = true;
     }
   });
 </script>
@@ -21,8 +19,5 @@
   <label for="email">email</label>
   <input id="email" name="email" on:change={handleChange} bind:value={$form.email} />
 
-  <button type="submit">{submitted ? 'form submitted!' : 'submit'}</button>
+  <button type="submit">Submit</button>
 </form>
-
-<!-- print out state for debugging -->
-<pre>{JSON.stringify($state, null, 2)}</pre>

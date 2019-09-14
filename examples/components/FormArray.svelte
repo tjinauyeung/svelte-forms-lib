@@ -1,5 +1,5 @@
 <script>
-  import createForm from "svelte-forms-lib";
+  import { createForm } from "svelte-forms-lib";
   import yup from "yup";
 
   const { form, errors, state, handleChange, handleSubmit, handleReset } = createForm({

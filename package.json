@@ -6,11 +6,11 @@
     "start": "rollup -c rollup.config.js",
     "start:examples": "run-p build  build:examples serve:examples",
     "build": "NODE_ENV=production rollup -c rollup.config.js",
-    "build:examples": "rollup -c rollup.examples.config.js -w",
+    "build:examples": "rollup -c rollup.config.examples.js -w",
     "prepare": "npm run build",
     "test": "jest",
     "test:watch": "jest --watchAll",
-    "format": "prettier --write lib/**/*.{ts,css}",
+    "format": "prettier --write lib/**/*.{js,css}",
     "serve:examples": "sirv dist-examples --single --dev"
   },
   "files": [
@@ -32,6 +32,7 @@
     "url": "https://github.com/tjinauyeung/svelte-forms-lib"
   },
   "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "license": "MIT",
   "dependencies": {
     "property-expr": "1.5.1"
@@ -60,6 +61,7 @@
     "rollup-plugin-typescript": "1.0.1",
     "sirv-cli": "0.4.4",
     "svelte": "3.10.0",
+    "svelte-ts-preprocess": "1.1.3",
     "ts-jest": "24.0.2",
     "tslib": "1.10.0",
     "typescript": "3.6.2",
