@@ -1,6 +1,6 @@
 {
   "name": "svelte-forms-lib",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Svelte forms lib - A lightweight library for managing forms in Svelte v3",
   "scripts": {
     "start": "rollup -c rollup.config.js",
