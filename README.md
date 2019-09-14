@@ -228,6 +228,43 @@ Custom validation is also possible:
 
 Currently custom validation is only run when submitting the form. Field validation will be added in the near future.
 
+### Using `Form`, `Field` and `ErrorMessage` helper components
+
+To reduce the boilerplate it is also possible to use additional helper components i.e. `Form`, `Field` and `ErrorMessage`. Usage can be done as follows:
+
+```svelte
+<script>
+  import { Form, Field, ErrorMessage } from "svelte-forms-lib";
+  import yup from "yup";
+</script>
+
+<Form
+  initialValues={{
+    name: "",
+    email: ""
+  }}
+  validationSchema={yup.object().shape({
+    name: yup.string().required(),
+    email: yup.string().email().required()
+  })}
+  onSubmit={values => {
+    alert(JSON.stringify(values, null, 2))
+  }}
+>
+  <label>name</label>
+  <Field name="name" />
+  <ErrorMessage name="name" />
+
+  <label>email</label>
+  <Field name="email" />
+  <ErrorMessage name="email" />
+
+  <button type="submit">submit</button>
+</Form>
+```
+
+The components are using context API to get the form state and handlers so that you don't have to set that up. All props passed to the helper components will be passed down to the element it's mapped to. The `Form` is mapped to `<form>`, `Field` to `<input>` and `ErrorMessage` to `<small>`.
+
 ### Handling form arrays
 
 Svelte forms lib also support form arrays and nested fields. The name attribute in the inputs accept path like strings i.e. `users[1].name` which allow us to bind to nested properties if the form requires it. See example below. Validation still works as expected.
