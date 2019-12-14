@@ -1,5 +1,7 @@
 <script>
   import { createForm } from "svelte-forms-lib";
+  import { code } from '../code/Custom';
+  import Code from './Code.svelte';
   import yup from "yup";
 
   const { form, errors, state, handleChange, handleSubmit } = createForm({
@@ -18,18 +20,16 @@
       return errs;
     },
     onSubmit: values => {
-      console.log("make form request:", values);
+      alert(JSON.stringify(values));
     }
   });
 </script>
 
-<style>
-  .error {
-    display: block;
-    color: red;
-    font-size: 12px;
-  }
-</style>
+<h1>Custom validation</h1>
+<p>
+  Example using Yup as validation. The validate function allows for custom validation. Validation is
+  only fired upon submission. Field validation coming soon.
+</p>
 
 <form on:submit={handleSubmit}>
   <label for="name">name</label>
@@ -47,5 +47,4 @@
   <button type="submit">submit</button>
 </form>
 
-<!-- print out state for debugging -->
-<pre>{JSON.stringify($state, null, 2)}</pre>
+<Code code={code} />

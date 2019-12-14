@@ -1,6 +1,8 @@
 <script>
   import { createForm } from "svelte-forms-lib";
   import yup from "yup";
+  import Code from './Code.svelte';
+  import { code } from "../code/Array";
 
   const { form, errors, state, handleChange, handleSubmit, handleReset } = createForm({
     initialValues: {
@@ -23,7 +25,7 @@
       )
     }),
     onSubmit: values => {
-      console.log("make form request:", values);
+      alert(JSON.stringify(values));
     }
   });
 
@@ -60,6 +62,13 @@
     display: flex;
   }
 </style>
+
+<h1>Array</h1>
+<p>
+  Example using dynamic form with adding and removing of new fields or objects. Validation and
+  values are persisted. Support for nested field targeting i.e.
+  <code>$forms.users[i].name</code>
+</p>
 
 <form>
   <h1 class="form-title">Add users</h1>
@@ -105,5 +114,4 @@
   </div>
 </form>
 
-<!-- print out state for debugging -->
-<pre>{JSON.stringify($state, null, 2)}</pre>
+<Code {code} />
