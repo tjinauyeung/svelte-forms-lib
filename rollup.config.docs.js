@@ -7,12 +7,12 @@ import svelte from "rollup-plugin-svelte";
 const path = require("path");
 
 export default {
-  input: "examples/index.js",
+  input: "docs-src/index.js",
   output: {
     sourcemap: true,
     format: "iife",
     name: "app",
-    file: "dist-examples/bundle.js"
+    file: "docs/bundle.js"
   },
   plugins: [
     svelte(),
@@ -22,7 +22,7 @@ export default {
       resolve: [".svelte", "js"],
       entries: [{ find: "svelte-forms-lib", replacement: path.resolve(__dirname + "/dist/index") }]
     }),
-    livereload("dist-examples")
+    livereload("docs")
   ],
   watch: {
     clearScreen: false

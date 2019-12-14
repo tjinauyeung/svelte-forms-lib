@@ -1,6 +1,8 @@
 <script>
+  import { onMount } from "svelte";
   import { createForm } from "svelte-forms-lib";
   import yup from "yup";
+  import { code } from '../code/Yup';
 
   const { form, errors, state, handleChange, handleSubmit } = createForm({
     initialValues: {
@@ -15,18 +17,20 @@
         .required()
     }),
     onSubmit: values => {
-      console.log("make form request:", values);
+      alert(JSON.stringify(values));
     }
+  });
+
+  let pre;
+  onMount(() => {
+    pre.innerHTML = code;
   });
 </script>
 
-<style>
-  .error {
-    display: block;
-    color: red;
-    font-size: 12px;
-  }
-</style>
+<h1>Yup validation</h1>
+<p>
+  Example using <a href="https://github.com/jquense/yup" target="_blank">Yup</a> as validation. Validation happens when input changes and upon form submission.
+</p>
 
 <form on:submit={handleSubmit}>
   <label for="name">name</label>
@@ -37,7 +41,7 @@
     on:blur={handleChange}
     bind:value={$form.name} />
   {#if $errors.name}
-    <hint class="error">{$errors.name}</hint>
+    <small>{$errors.name}</small>
   {/if}
 
   <label for="email">email</label>
@@ -48,11 +52,10 @@
     on:blur={handleChange}
     bind:value={$form.email} />
   {#if $errors.email}
-    <hint class="error">{$errors.email}</hint>
+    <small>{$errors.email}</small>
   {/if}
 
   <button type="submit">submit</button>
 </form>
 
-<!-- print out state for debugging -->
-<pre>{JSON.stringify($state, null, 2)}</pre>
+<pre bind:this={pre} />

@@ -1,0 +1,121 @@
+html,
+body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  color: #333;
+  margin: 0;
+  padding: 8px;
+  box-sizing: border-box;
+  font-family: Roboto, sans-serif;
+}
+
+label {
+  line-height: 2;
+}
+
+*,
+*:after,
+*:before {
+  box-sizing: border-box;
+}
+
+label {
+  display: block;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  max-width: 400px;
+  width: 100%;
+  padding: 12px;
+  margin: 0 0 12px 0;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  transition: all 150ms ease;
+}
+
+input:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgb(98, 141, 150, 0.3);
+  border-color: rgb(98, 141, 150, 1);
+}
+
+input:disabled {
+  color: #ccc;
+}
+
+input[type="range"] {
+  height: 0;
+}
+
+button {
+  color: #fff;
+  background-color: rgb(98, 141, 150, 1);
+  border: none;
+  outline: none;
+  border-radius: 4px;
+  display: block;
+  margin-top: 12px;
+  line-height: 1.8;
+  font-size: 18px;
+  padding: 8px 24px;
+  min-width: 200px;
+}
+
+p {
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+h1 {
+  margin-top: 0;
+}
+
+pre {
+  background: #f1f6f7;
+  padding: 15px 20px;
+  border-radius: 4px;
+  line-height: 1.8;
+  overflow: scroll;
+  font-size: 14px;
+  font-family: Roboto Mono, monospace;
+}
+
+form {
+  margin: 50px 0 70px;
+}
+
+fieldset {
+  border: none;
+  padding: 0;
+}
+
+a {
+  display: inline-block;
+  margin: 8px;
+  text-decoration: none;
+  color: inherit;
+  font-size: 16px;
+}
+
+a[aria-current="page"] {
+  font-weight: bold;
+}
+
+label {
+  font-weight: bold;
+}
+
+small {
+  display: block;
+  color: red;
+  font-size: 14px;
+}
