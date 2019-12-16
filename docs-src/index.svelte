@@ -1,4 +1,5 @@
 <script>
+  import Introduction from "./pages/Introduction.svelte";
   import Basic from "./examples/Basic/component.svelte";
   import YupValidation from "./examples/Yup/component.svelte";
   import CustomValidation from "./examples/Custom/component.svelte";
@@ -55,18 +56,18 @@
   .container {
     max-width: 900px;
     padding: 40px;
-    min-height: calc(100vh - 120px);
+    min-height: calc(100vh - 100px);
   }
 
   .logo {
-    max-width: 140px;
+    max-width: 100px;
   }
 
   footer {
     width: 100%;
     background: var(--secondary);
     padding: 20px;
-    height: 120px;
+    height: 100px;
     color: #fff;
     display: flex;
     align-items: center;
@@ -134,6 +135,7 @@
         <img src="./github.png" alt="github repository for svelte forms lib" />
       </a>
       <div class="container">
+        <Route path="/introduction" component={Introduction} />
         <Route path="/basic" component={Basic} />
         <Route path="/yup" component={YupValidation} />
         <Route path="/array" component={FormArray} />
