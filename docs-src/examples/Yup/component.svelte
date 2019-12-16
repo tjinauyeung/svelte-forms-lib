@@ -1,8 +1,8 @@
 <script>
-  import { onMount } from "svelte";
   import { createForm } from "svelte-forms-lib";
   import yup from "yup";
-  import { code } from '../code/Yup';
+  import Code from "../../components/Code.svelte";
+  import { source, highlight } from "./source";
 
   const { form, errors, state, handleChange, handleSubmit } = createForm({
     initialValues: {
@@ -17,17 +17,13 @@
         .required()
     }),
     onSubmit: values => {
-      alert(JSON.stringify(values));
+      alert(JSON.stringify(values, null, 2));
     }
-  });
-
-  let pre;
-  onMount(() => {
-    pre.innerHTML = code;
   });
 </script>
 
 <h1>Yup validation</h1>
+<hr/>
 <p>
   Example using <a href="https://github.com/jquense/yup" target="_blank">Yup</a> as validation. Validation happens when input changes and upon form submission.
 </p>
@@ -58,4 +54,4 @@
   <button type="submit">submit</button>
 </form>
 
-<pre bind:this={pre} />
+<Code {source} {highlight} />

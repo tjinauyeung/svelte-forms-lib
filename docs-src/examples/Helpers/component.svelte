@@ -1,7 +1,7 @@
 <script>
   import { Form, Field, ErrorMessage } from "svelte-forms-lib";
-  import Code from './Code.svelte';
-  import { code } from '../code/Helpers';
+  import Code from "../../components/Code.svelte";
+  import { source, highlight } from "./source";
   import yup from "yup";
 
   const formProps = {
@@ -19,7 +19,11 @@
   };
 </script>
 
-<p>Example Form, Field and ErrorMessage helper components.</p>
+<h1>Using helper components</h1>
+<hr />
+<p>
+  Example <span>Form</span>, <span>Field</span> and <span>ErrorMessage</span> helper components.
+</p>
 
 <Form {...formProps}>
   <label>name</label>
@@ -33,4 +37,4 @@
   <button type="submit">submit</button>
 </Form>
 
-<Code code={code} />
+<Code {source} {highlight} />

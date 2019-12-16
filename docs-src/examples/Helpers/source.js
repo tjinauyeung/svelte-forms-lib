@@ -1,7 +1,7 @@
 import Prism from "prismjs";
 import "prism-svelte";
 
-const source = `
+export const source = `
   <script>
     import { Form, Field, ErrorMessage } from "svelte-forms-lib";
     import yup from "yup";
@@ -34,4 +34,4 @@ const source = `
   </Form>
 `;
 
-export const code = Prism.highlight(source, Prism.languages.svelte, "svelte");
+export const highlight = Prism.highlight(source, Prism.languages.svelte, "svelte");

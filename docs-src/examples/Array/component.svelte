@@ -1,8 +1,8 @@
 <script>
   import { createForm } from "svelte-forms-lib";
   import yup from "yup";
-  import Code from './Code.svelte';
-  import { code } from "../code/Array";
+  import Code from "../../components/Code.svelte";
+  import { source, highlight } from "./source";
 
   const { form, errors, state, handleChange, handleSubmit, handleReset } = createForm({
     initialValues: {
@@ -25,7 +25,7 @@
       )
     }),
     onSubmit: values => {
-      alert(JSON.stringify(values));
+      alert(JSON.stringify(values, null, 2));
     }
   });
 
@@ -41,11 +41,6 @@
 </script>
 
 <style>
-  .error {
-    display: block;
-    color: red;
-    font-size: 12px;
-  }
   .form-group {
     display: flex;
     align-items: baseline;
@@ -53,7 +48,7 @@
   .form-title {
     font-size: 18px;
     font-weight: 600;
-    margin: 0;
+    margin: 22px 0 0;
   }
   .push-right {
     margin-right: 15px;
@@ -61,9 +56,14 @@
   .flex {
     display: flex;
   }
+  button {
+    padding: 8px 24px;
+    min-width: auto;
+  }
 </style>
 
-<h1>Array</h1>
+<h1>Form array</h1>
+<hr/>
 <p>
   Example using dynamic form with adding and removing of new fields or objects. Validation and
   values are persisted. Support for nested field targeting i.e.
@@ -83,7 +83,7 @@
           on:blur={handleChange}
           bind:value={$form.users[j].name} />
         {#if $errors.users[j].name}
-          <hint class="error">{$errors.users[j].name}</hint>
+          <small>{$errors.users[j].name}</small>
         {/if}
       </div>
 
@@ -95,7 +95,7 @@
           on:blur={handleChange}
           bind:value={$form.users[j].email} />
         {#if $errors.users[j].email}
-          <hint class="error">{$errors.users[j].email}</hint>
+          <small>{$errors.users[j].email}</small>
         {/if}
       </div>
 
@@ -114,4 +114,4 @@
   </div>
 </form>
 
-<Code {code} />
+<Code {source} {highlight} />

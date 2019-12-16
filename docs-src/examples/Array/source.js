@@ -1,12 +1,19 @@
 import Prism from "prismjs";
 import "prism-svelte";
 
-const source = `
+export const source = `
   <script>
     import { createForm } from "svelte-forms-lib";
     import yup from "yup";
 
-    const { form, errors, state, handleChange, handleSubmit, handleReset } = createForm({
+    const {
+      form,
+      errors,
+      state,
+      handleChange,
+      handleSubmit,
+      handleReset
+    } = createForm({
       initialValues: {
         users: [
           {
@@ -46,57 +53,52 @@ const source = `
     .error {
       display: block;
       color: red;
-      font-size: 12px;
     }
     .form-group {
       display: flex;
       align-items: baseline;
     }
-    .form-title {
-      font-size: 18px;
-      font-weight: 600;
-      margin: 0;
-    }
-    .push-right {
-      margin-right: 15px;
-    }
-    .flex {
+    .button-group {
       display: flex;
+    }
+    button ~ button {
+      margin-left: 15px;
     }
   </style>
 
-
   <form>
-    <h1 class="form-title">Add users</h1>
+    <h1>Add users</h1>
 
     {#each $form.users as user, j}
       <div class="form-group">
-        <div class="push-right">
+        <div>
           <input
             name={\`users[\${j}].name\`}
             placeholder="name"
             on:change={handleChange}
             on:blur={handleChange}
-            bind:value={$form.users[j].name} />
+            bind:value={$form.users[j].name}
+          />
           {#if $errors.users[j].name}
-            <hint class="error">{$errors.users[j].name}</hint>
+            <small class="error">{$errors.users[j].name}</small>
           {/if}
         </div>
 
-        <div class="push-right">
+        <div>
           <input
             placeholder="email"
             name={\`users[\${j}].email\`}
             on:change={handleChange}
             on:blur={handleChange}
-            bind:value={$form.users[j].email} />
+            bind:value={$form.users[j].email}
+          />
           {#if $errors.users[j].email}
-            <hint class="error">{$errors.users[j].email}</hint>
+            <small class="error">{$errors.users[j].email}</small>
           {/if}
         </div>
 
         {#if j === $form.users.length - 1}
-          <button type="button" class="push-right" on:click={add}>+</button>
+          <button type="button" on:click={add}>+</button>
         {/if}
         {#if $form.users.length !== 1}
           <button type="button" on:click={remove(j)}>-</button>
@@ -104,11 +106,11 @@ const source = `
       </div>
     {/each}
 
-    <div class="flex">
-      <button type="button" class="push-right" on:click={handleSubmit}>submit</button>
+    <div class="button-group">
+      <button type="button" on:click={handleSubmit}>submit</button>
       <button type="button" on:click={handleReset}>reset</button>
     </div>
   </form>
 `;
 
-export const code = Prism.highlight(source, Prism.languages.svelte, "svelte");
+export const highlight = Prism.highlight(source, Prism.languages.svelte, "svelte");
