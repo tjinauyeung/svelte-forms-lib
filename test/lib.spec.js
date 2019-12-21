@@ -1,4 +1,4 @@
-const { createForm } = require("../dist");
+const { createForm } = require("../build");
 const yup = require("yup");
 const Chance = require("chance");
 

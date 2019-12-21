@@ -1,6 +1,6 @@
 
 <p>
-  <img src="./docs/logo.png" width="100px" height="100px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
+  <img src="./logo.png" width="100px" height="100px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
 </p>
 
 <a href="https://www.npmjs.com/package/svelte-forms-lib">

@@ -4,19 +4,17 @@
   "description": "Svelte forms lib - A lightweight library for managing forms in Svelte v3",
   "scripts": {
     "start": "rollup -c rollup.config.js",
-    "start:docs": "run-p build build:docs serve:docs",
     "build": "NODE_ENV=production rollup -c rollup.config.js",
-    "build:docs": "rollup -c rollup.config.docs.js -w",
     "prepare": "npm run build",
     "test": "jest",
     "test:watch": "jest --watchAll",
-    "format": "prettier --write lib/**/*.{js,css}",
-    "serve:docs": "sirv docs --single --dev"
+    "format": "prettier --write lib/**/*.{js,css}"
   },
   "files": [
     "build/*",
     "lib/*"
   ],
+  "svelte": "./lib/index.js",
   "author": "Tjin Au Yeung",
   "browserslist": [
     "last 1 chrome versions"
@@ -46,25 +44,13 @@
     "husky": "3.0.5",
     "jest": "24.9.0",
     "lint-staged": "9.2.5",
-    "npm-run-all": "4.1.5",
     "prettier": "1.18.2",
-    "prism-svelte": "0.4.6",
-    "prismjs": "1.17.1",
     "rollup": "1.20.3",
-    "rollup-plugin-alias": "2.0.0",
     "rollup-plugin-commonjs": "10.1.0",
-    "rollup-plugin-livereload": "1.0.1",
     "rollup-plugin-node-resolve": "5.2.0",
     "rollup-plugin-svelte": "5.1.0",
-    "sirv-cli": "0.4.4",
-    "svelte-routing": "1.4.0",
-    "svelte-ts-preprocess": "1.1.3",
-    "ts-jest": "24.0.2",
-    "tslib": "1.10.0",
-    "typescript": "3.6.2",
     "yup": "0.27.0"
   },
-  "svelte": "./lib/index.js",
   "husky": {
     "hooks": {
       "pre-commit": "npm run format",

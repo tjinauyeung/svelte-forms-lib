@@ -16,7 +16,5 @@ export default {
       paths: id => id.startsWith("svelte/") && `${id.replace("svelte", ".")}`
     }
   ],
-  plugins: [svelte(), resolve({
-    dedupe: ['svelte', 'svelte/internal'],
-  }), commonjs()]
+  plugins: [svelte(), resolve(), commonjs()]
 };
