@@ -13,9 +13,7 @@
     "format": "prettier --write lib/**/*.{js,css}",
     "serve:docs": "sirv docs --single --dev"
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["build/*", "lib/*"],
   "author": "Tjin Au Yeung",
   "browserslist": [
     "last 1 chrome versions"
@@ -30,8 +28,8 @@
     "type": "git",
     "url": "https://github.com/tjinauyeung/svelte-forms-lib"
   },
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "main": "./build/index.js",
+  "module": "./build/index.mjs",
   "license": "MIT",
   "dependencies": {
     "property-expr": "1.5.1",
