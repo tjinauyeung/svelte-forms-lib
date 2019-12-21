@@ -34,10 +34,8 @@
   "module": "./dist/index.mjs",
   "license": "MIT",
   "dependencies": {
-    "property-expr": "1.5.1"
-  },
-  "peerDependencies": {
-    "svelte": "3.9.2"
+    "property-expr": "1.5.1",
+    "svelte": "3.16.5"
   },
   "devDependencies": {
     "@types/chance": "1.0.6",
@@ -58,7 +56,6 @@
     "rollup-plugin-node-resolve": "5.2.0",
     "rollup-plugin-svelte": "5.1.0",
     "sirv-cli": "0.4.4",
-    "svelte": "3.10.0",
     "svelte-routing": "1.4.0",
     "svelte-ts-preprocess": "1.1.3",
     "ts-jest": "24.0.2",
@@ -66,6 +63,7 @@
     "typescript": "3.6.2",
     "yup": "0.27.0"
   },
+  "svelte": "./lib/index.js",
   "husky": {
     "hooks": {
       "pre-commit": "npm run format",

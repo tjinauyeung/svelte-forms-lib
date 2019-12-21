@@ -1,27 +1,24 @@
 
-<p align="center">
-  <img src="./website/assets/logo-svelte-forms-lib.png" width="400px" height="80px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
+<p>
+  <img src="./docs/logo.png" width="100px" height="100px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
 </p>
 
-<p align="center">
-  <a href="https://www.npmjs.com/package/svelte-forms-lib">
-    <img src="https://img.shields.io/npm/v/svelte-forms-lib.svg" alt="npm version">
-  </a>
-  <a href="https://www.npmjs.com/package/svelte-forms-lib">
-    <img src="https://img.shields.io/npm/dm/svelte-forms-lib.svg" alt="npm downloads">
-  </a>
-  <a href="https://bundlephobia.com/result?p=svelte-forms-lib">
-    <img src="https://img.shields.io/bundlephobia/min/svelte-forms-lib.svg" alt="minified size">
-  </a>
-  <a href="https://opensource.org/licenses/MIT">
-    <img src="https://img.shields.io/npm/l/svelte-forms-lib.svg" alt="license">
-  </a>
-  </a>
-</p>
+<a href="https://www.npmjs.com/package/svelte-forms-lib">
+  <img src="https://img.shields.io/npm/v/svelte-forms-lib.svg" alt="npm version">
+</a>
+</bbr>
+<a href="https://www.npmjs.com/package/svelte-forms-lib">
+  <img src="https://img.shields.io/npm/dm/svelte-forms-lib.svg" alt="npm downloads">
+</a>
+<a href="https://bundlephobia.com/result?p=svelte-forms-lib">
+  <img src="https://img.shields.io/bundlephobia/min/svelte-forms-lib.svg" alt="minified size">
+</a>
+<a href="https://opensource.org/licenses/MIT">
+  <img src="https://img.shields.io/npm/l/svelte-forms-lib.svg" alt="license">
+</a>
+</a>
 
-<p align="center">
-  Svelte forms lib is a lightweight library for managing forms in Svelte, with an <a href="https://github.com/jaredpalmer/formik" target="_blank">Formik</a> like API.
-</p>
+Svelte forms lib is a lightweight library for managing forms in Svelte, with an <a href="https://github.com/jaredpalmer/formik" target="_blank">Formik</a> like API.
 
 ## Examples
 

@@ -6,15 +6,17 @@ export default {
   input: "./lib/index.js",
   output: [
     {
-      file: `./dist/index.mjs`,
+      file: `./build/index.mjs`,
       format: "esm",
       paths: id => id.startsWith("svelte/") && `${id.replace("svelte", ".")}`
     },
     {
-      file: `./dist/index.js`,
+      file: `./build/index.js`,
       format: "cjs",
       paths: id => id.startsWith("svelte/") && `${id.replace("svelte", ".")}`
     }
   ],
-  plugins: [svelte(), resolve(), commonjs()]
+  plugins: [svelte(), resolve({
+    dedupe: ['svelte', 'svelte/internal'],
+  }), commonjs()]
 };

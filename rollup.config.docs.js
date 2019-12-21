@@ -20,7 +20,7 @@ export default {
     commonjs(),
     alias({
       resolve: [".svelte", "js"],
-      entries: [{ find: "svelte-forms-lib", replacement: path.resolve(__dirname + "/dist/index") }]
+      entries: [{ find: "svelte-forms-lib", replacement: path.resolve(__dirname + "/build/index") }]
     }),
     livereload("docs")
   ],

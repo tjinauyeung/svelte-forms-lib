@@ -32,21 +32,31 @@ var app = (function () {
     function component_subscribe(component, store, callback) {
         component.$$.on_destroy.push(subscribe(store, callback));
     }
-    function create_slot(definition, ctx, fn) {
+    function create_slot(definition, ctx, $$scope, fn) {
         if (definition) {
-            const slot_ctx = get_slot_context(definition, ctx, fn);
+            const slot_ctx = get_slot_context(definition, ctx, $$scope, fn);
             return definition[0](slot_ctx);
         }
     }
-    function get_slot_context(definition, ctx, fn) {
-        return definition[1]
-            ? assign({}, assign(ctx.$$scope.ctx, definition[1](fn ? fn(ctx) : {})))
-            : ctx.$$scope.ctx;
+    function get_slot_context(definition, ctx, $$scope, fn) {
+        return definition[1] && fn
+            ? assign($$scope.ctx.slice(), definition[1](fn(ctx)))
+            : $$scope.ctx;
     }
-    function get_slot_changes(definition, ctx, changed, fn) {
-        return definition[1]
-            ? assign({}, assign(ctx.$$scope.changed || {}, definition[1](fn ? fn(changed) : {})))
-            : ctx.$$scope.changed || {};
+    function get_slot_changes(definition, $$scope, dirty, fn) {
+        if (definition[2] && fn) {
+            const lets = definition[2](fn(dirty));
+            if (typeof $$scope.dirty === 'object') {
+                const merged = [];
+                const len = Math.max($$scope.dirty.length, lets.length);
+                for (let i = 0; i < len; i += 1) {
+                    merged[i] = $$scope.dirty[i] | lets[i];
+                }
+                return merged;
+            }
+            return $$scope.dirty | lets;
+        }
+        return $$scope.dirty;
     }
     function exclude_internal_props(props) {
         const result = {};
@@ -54,6 +64,10 @@ var app = (function () {
             if (k[0] !== '$')
                 result[k] = props[k];
         return result;
+    }
+    function set_store_value(store, ret, value = ret) {
+        store.set(value);
+        return ret;
     }
 
     function append(target, node) {
@@ -90,15 +104,20 @@ var app = (function () {
     function attr(node, attribute, value) {
         if (value == null)
             node.removeAttribute(attribute);
-        else
+        else if (node.getAttribute(attribute) !== value)
             node.setAttribute(attribute, value);
     }
     function set_attributes(node, attributes) {
+        // @ts-ignore
+        const descriptors = Object.getOwnPropertyDescriptors(node.__proto__);
         for (const key in attributes) {
-            if (key === 'style') {
+            if (attributes[key] == null) {
+                node.removeAttribute(key);
+            }
+            else if (key === 'style') {
                 node.style.cssText = attributes[key];
             }
-            else if (key in node) {
+            else if (descriptors[key] && descriptors[key].set) {
                 node[key] = attributes[key];
             }
             else {
@@ -141,7 +160,7 @@ var app = (function () {
         get_current_component().$$.on_destroy.push(fn);
     }
     function createEventDispatcher() {
-        const component = current_component;
+        const component = get_current_component();
         return (type, detail) => {
             const callbacks = component.$$.callbacks[type];
             if (callbacks) {
@@ -207,11 +226,12 @@ var app = (function () {
         update_scheduled = false;
     }
     function update($$) {
-        if ($$.fragment) {
-            $$.update($$.dirty);
+        if ($$.fragment !== null) {
+            $$.update();
             run_all($$.before_update);
-            $$.fragment.p($$.dirty, $$.ctx);
-            $$.dirty = null;
+            const dirty = $$.dirty;
+            $$.dirty = [-1];
+            $$.fragment && $$.fragment.p($$.ctx, dirty);
             $$.after_update.forEach(add_render_callback);
         }
     }
@@ -288,9 +308,15 @@ var app = (function () {
         }
         return update;
     }
+    function get_spread_object(spread_props) {
+        return typeof spread_props === 'object' && spread_props !== null ? spread_props : {};
+    }
+    function create_component(block) {
+        block && block.c();
+    }
     function mount_component(component, target, anchor) {
         const { fragment, on_mount, on_destroy, after_update } = component.$$;
-        fragment.m(target, anchor);
+        fragment && fragment.m(target, anchor);
         // onMount happens before the initial afterUpdate
         add_render_callback(() => {
             const new_on_destroy = on_mount.map(run).filter(is_function);
@@ -307,32 +333,33 @@ var app = (function () {
         after_update.forEach(add_render_callback);
     }
     function destroy_component(component, detaching) {
-        if (component.$$.fragment) {
-            run_all(component.$$.on_destroy);
-            component.$$.fragment.d(detaching);
+        const $$ = component.$$;
+        if ($$.fragment !== null) {
+            run_all($$.on_destroy);
+            $$.fragment && $$.fragment.d(detaching);
             // TODO null out other refs, including component.$$ (but need to
             // preserve final state?)
-            component.$$.on_destroy = component.$$.fragment = null;
-            component.$$.ctx = {};
+            $$.on_destroy = $$.fragment = null;
+            $$.ctx = [];
         }
     }
-    function make_dirty(component, key) {
-        if (!component.$$.dirty) {
+    function make_dirty(component, i) {
+        if (component.$$.dirty[0] === -1) {
             dirty_components.push(component);
             schedule_update();
-            component.$$.dirty = blank_object();
+            component.$$.dirty.fill(0);
         }
-        component.$$.dirty[key] = true;
+        component.$$.dirty[(i / 31) | 0] |= (1 << (i % 31));
     }
-    function init(component, options, instance, create_fragment, not_equal, prop_names) {
+    function init(component, options, instance, create_fragment, not_equal, props, dirty = [-1]) {
         const parent_component = current_component;
         set_current_component(component);
-        const props = options.props || {};
+        const prop_values = options.props || {};
         const $$ = component.$$ = {
             fragment: null,
             ctx: null,
             // state
-            props: prop_names,
+            props,
             update: noop,
             not_equal,
             bound: blank_object(),
@@ -344,31 +371,33 @@ var app = (function () {
             context: new Map(parent_component ? parent_component.$$.context : []),
             // everything else
             callbacks: blank_object(),
-            dirty: null
+            dirty
         };
         let ready = false;
         $$.ctx = instance
-            ? instance(component, props, (key, value) => {
-                if ($$.ctx && not_equal($$.ctx[key], $$.ctx[key] = value)) {
-                    if ($$.bound[key])
-                        $$.bound[key](value);
+            ? instance(component, prop_values, (i, ret, value = ret) => {
+                if ($$.ctx && not_equal($$.ctx[i], $$.ctx[i] = value)) {
+                    if ($$.bound[i])
+                        $$.bound[i](value);
                     if (ready)
-                        make_dirty(component, key);
+                        make_dirty(component, i);
                 }
+                return ret;
             })
-            : props;
+            : [];
         $$.update();
         ready = true;
         run_all($$.before_update);
-        $$.fragment = create_fragment($$.ctx);
+        // `false` as a special case of no DOM component
+        $$.fragment = create_fragment ? create_fragment($$.ctx) : false;
         if (options.target) {
             if (options.hydrate) {
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                $$.fragment.l(children(options.target));
+                $$.fragment && $$.fragment.l(children(options.target));
             }
             else {
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                $$.fragment.c();
+                $$.fragment && $$.fragment.c();
             }
             if (options.intro)
                 transition_in(component.$$.fragment);
@@ -396,10 +425,14 @@ var app = (function () {
         }
     }
 
-    /* docs-src/pages/Introduction.svelte generated by Svelte v3.10.0 */
+    /* docs-src/pages/Introduction.svelte generated by Svelte v3.16.5 */
 
     function create_fragment(ctx) {
-    	var h1, t1, hr, t2, p;
+    	let h1;
+    	let t1;
+    	let hr;
+    	let t2;
+    	let p;
 
     	return {
     		c() {
@@ -411,7 +444,6 @@ var app = (function () {
     			p = element("p");
     			p.textContent = "Svelte is great.";
     		},
-
     		m(target, anchor) {
     			insert(target, h1, anchor);
     			insert(target, t1, anchor);
@@ -419,19 +451,15 @@ var app = (function () {
     			insert(target, t2, anchor);
     			insert(target, p, anchor);
     		},
-
     		p: noop,
     		i: noop,
     		o: noop,
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(h1);
-    				detach(t1);
-    				detach(hr);
-    				detach(t2);
-    				detach(p);
-    			}
+    			if (detaching) detach(h1);
+    			if (detaching) detach(t1);
+    			if (detaching) detach(hr);
+    			if (detaching) detach(t2);
+    			if (detaching) detach(p);
     		}
     	};
     }
@@ -439,7 +467,7 @@ var app = (function () {
     class Introduction extends SvelteComponent {
     	constructor(options) {
     		super();
-    		init(this, options, null, create_fragment, safe_not_equal, []);
+    		init(this, options, null, create_fragment, safe_not_equal, {});
     	}
     }
 
@@ -453,7 +481,7 @@ var app = (function () {
     	return module = { exports: {} }, fn(module, module.exports), module.exports;
     }
 
-    var dist = createCommonjsModule(function (module, exports) {
+    var build = createCommonjsModule(function (module, exports) {
 
     Object.defineProperty(exports, '__esModule', { value: true });
 
@@ -486,21 +514,31 @@ var app = (function () {
     function component_subscribe(component, store, callback) {
         component.$$.on_destroy.push(subscribe(store, callback));
     }
-    function create_slot(definition, ctx, fn) {
+    function create_slot(definition, ctx, $$scope, fn) {
         if (definition) {
-            const slot_ctx = get_slot_context(definition, ctx, fn);
+            const slot_ctx = get_slot_context(definition, ctx, $$scope, fn);
             return definition[0](slot_ctx);
         }
     }
-    function get_slot_context(definition, ctx, fn) {
-        return definition[1]
-            ? assign({}, assign(ctx.$$scope.ctx, definition[1](fn ? fn(ctx) : {})))
-            : ctx.$$scope.ctx;
+    function get_slot_context(definition, ctx, $$scope, fn) {
+        return definition[1] && fn
+            ? assign($$scope.ctx.slice(), definition[1](fn(ctx)))
+            : $$scope.ctx;
     }
-    function get_slot_changes(definition, ctx, changed, fn) {
-        return definition[1]
-            ? assign({}, assign(ctx.$$scope.changed || {}, definition[1](fn ? fn(changed) : {})))
-            : ctx.$$scope.changed || {};
+    function get_slot_changes(definition, $$scope, dirty, fn) {
+        if (definition[2] && fn) {
+            const lets = definition[2](fn(dirty));
+            if (typeof $$scope.dirty === 'object') {
+                const merged = [];
+                const len = Math.max($$scope.dirty.length, lets.length);
+                for (let i = 0; i < len; i += 1) {
+                    merged[i] = $$scope.dirty[i] | lets[i];
+                }
+                return merged;
+            }
+            return $$scope.dirty | lets;
+        }
+        return $$scope.dirty;
     }
     function exclude_internal_props(props) {
         const result = {};
@@ -535,15 +573,20 @@ var app = (function () {
     function attr(node, attribute, value) {
         if (value == null)
             node.removeAttribute(attribute);
-        else
+        else if (node.getAttribute(attribute) !== value)
             node.setAttribute(attribute, value);
     }
     function set_attributes(node, attributes) {
+        // @ts-ignore
+        const descriptors = Object.getOwnPropertyDescriptors(node.__proto__);
         for (const key in attributes) {
-            if (key === 'style') {
+            if (attributes[key] == null) {
+                node.removeAttribute(key);
+            }
+            else if (key === 'style') {
                 node.style.cssText = attributes[key];
             }
-            else if (key in node) {
+            else if (descriptors[key] && descriptors[key].set) {
                 node[key] = attributes[key];
             }
             else {
@@ -627,11 +670,12 @@ var app = (function () {
         update_scheduled = false;
     }
     function update($$) {
-        if ($$.fragment) {
-            $$.update($$.dirty);
+        if ($$.fragment !== null) {
+            $$.update();
             run_all($$.before_update);
-            $$.fragment.p($$.dirty, $$.ctx);
-            $$.dirty = null;
+            const dirty = $$.dirty;
+            $$.dirty = [-1];
+            $$.fragment && $$.fragment.p($$.ctx, dirty);
             $$.after_update.forEach(add_render_callback);
         }
     }
@@ -695,7 +739,7 @@ var app = (function () {
     }
     function mount_component(component, target, anchor) {
         const { fragment, on_mount, on_destroy, after_update } = component.$$;
-        fragment.m(target, anchor);
+        fragment && fragment.m(target, anchor);
         // onMount happens before the initial afterUpdate
         add_render_callback(() => {
             const new_on_destroy = on_mount.map(run).filter(is_function);
@@ -712,32 +756,33 @@ var app = (function () {
         after_update.forEach(add_render_callback);
     }
     function destroy_component(component, detaching) {
-        if (component.$$.fragment) {
-            run_all(component.$$.on_destroy);
-            component.$$.fragment.d(detaching);
+        const $$ = component.$$;
+        if ($$.fragment !== null) {
+            run_all($$.on_destroy);
+            $$.fragment && $$.fragment.d(detaching);
             // TODO null out other refs, including component.$$ (but need to
             // preserve final state?)
-            component.$$.on_destroy = component.$$.fragment = null;
-            component.$$.ctx = {};
+            $$.on_destroy = $$.fragment = null;
+            $$.ctx = [];
         }
     }
-    function make_dirty(component, key) {
-        if (!component.$$.dirty) {
+    function make_dirty(component, i) {
+        if (component.$$.dirty[0] === -1) {
             dirty_components.push(component);
             schedule_update();
-            component.$$.dirty = blank_object();
+            component.$$.dirty.fill(0);
         }
-        component.$$.dirty[key] = true;
+        component.$$.dirty[(i / 31) | 0] |= (1 << (i % 31));
     }
-    function init(component, options, instance, create_fragment, not_equal, prop_names) {
+    function init(component, options, instance, create_fragment, not_equal, props, dirty = [-1]) {
         const parent_component = current_component;
         set_current_component(component);
-        const props = options.props || {};
+        const prop_values = options.props || {};
         const $$ = component.$$ = {
             fragment: null,
             ctx: null,
             // state
-            props: prop_names,
+            props,
             update: noop,
             not_equal,
             bound: blank_object(),
@@ -749,31 +794,33 @@ var app = (function () {
             context: new Map(parent_component ? parent_component.$$.context : []),
             // everything else
             callbacks: blank_object(),
-            dirty: null
+            dirty
         };
         let ready = false;
         $$.ctx = instance
-            ? instance(component, props, (key, value) => {
-                if ($$.ctx && not_equal($$.ctx[key], $$.ctx[key] = value)) {
-                    if ($$.bound[key])
-                        $$.bound[key](value);
+            ? instance(component, prop_values, (i, ret, value = ret) => {
+                if ($$.ctx && not_equal($$.ctx[i], $$.ctx[i] = value)) {
+                    if ($$.bound[i])
+                        $$.bound[i](value);
                     if (ready)
-                        make_dirty(component, key);
+                        make_dirty(component, i);
                 }
+                return ret;
             })
-            : props;
+            : [];
         $$.update();
         ready = true;
         run_all($$.before_update);
-        $$.fragment = create_fragment($$.ctx);
+        // `false` as a special case of no DOM component
+        $$.fragment = create_fragment ? create_fragment($$.ctx) : false;
         if (options.target) {
             if (options.hydrate) {
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                $$.fragment.l(children(options.target));
+                $$.fragment && $$.fragment.l(children(options.target));
             }
             else {
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                $$.fragment.c();
+                $$.fragment && $$.fragment.c();
             }
             if (options.intro)
                 transition_in(component.$$.fragment);
@@ -862,13 +909,6 @@ var app = (function () {
         }
         return { set, update, subscribe };
     }
-    /**
-     * Derived value store by synchronizing one or more readable stores and
-     * applying an aggregation function over its input values.
-     * @param {Stores} stores input stores
-     * @param {function(Stores=, function(*)=):*}fn function callback that aggregates the values
-     * @param {*=}initial_value when used asynchronously
-     */
     function derived(stores, fn, initial_value) {
         const single = !Array.isArray(stores);
         const stores_array = single
@@ -1387,51 +1427,42 @@ var app = (function () {
       };
     };
 
-    const key = {};
+    const key = 'foasdfsdf';
 
-    /* lib/components/Form.svelte generated by Svelte v3.10.0 */
+    /* lib/components/Form.svelte generated by Svelte v3.16.5 */
+    const get_default_slot_changes = dirty => ({});
 
-    const get_default_slot_changes = ({ form, errors, touched, state, handleChange, handleSubmit, updateField, updateTouched }) => ({});
-    const get_default_slot_context = ({ form, errors, touched, state, handleChange, handleSubmit, updateField, updateTouched }) => ({
-    	form: form,
-    	errors: errors,
-    	touched: touched,
-    	state: state,
-    	handleChange: handleChange,
-    	handleSubmit: handleSubmit,
-    	updateField: updateField,
-    	updateTouched: updateTouched
+    const get_default_slot_context = ctx => ({
+    	form: /*form*/ ctx[0],
+    	errors: /*errors*/ ctx[1],
+    	touched: /*touched*/ ctx[2],
+    	state: /*state*/ ctx[3],
+    	handleChange: /*handleChange*/ ctx[4],
+    	handleSubmit: /*handleSubmit*/ ctx[5],
+    	updateField: /*updateField*/ ctx[6],
+    	updateTouched: /*updateTouched*/ ctx[7]
     });
 
     function create_fragment(ctx) {
-    	var form_1, current, dispose;
+    	let form_1;
+    	let current;
+    	let dispose;
+    	const default_slot_template = /*$$slots*/ ctx[14].default;
+    	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[13], get_default_slot_context);
+    	let form_1_levels = [/*$$props*/ ctx[8]];
+    	let form_1_data = {};
 
-    	const default_slot_template = ctx.$$slots.default;
-    	const default_slot = create_slot(default_slot_template, ctx, get_default_slot_context);
-
-    	var form_1_levels = [
-    		ctx.$$props
-    	];
-
-    	var form_1_data = {};
-    	for (var i = 0; i < form_1_levels.length; i += 1) {
+    	for (let i = 0; i < form_1_levels.length; i += 1) {
     		form_1_data = assign(form_1_data, form_1_levels[i]);
     	}
 
     	return {
     		c() {
     			form_1 = element("form");
-
     			if (default_slot) default_slot.c();
-
     			set_attributes(form_1, form_1_data);
-    			dispose = listen(form_1, "submit", ctx.handleSubmit);
+    			dispose = listen(form_1, "submit", /*handleSubmit*/ ctx[5]);
     		},
-
-    		l(nodes) {
-    			if (default_slot) default_slot.l(form_1_nodes);
-    		},
-
     		m(target, anchor) {
     			insert(target, form_1, anchor);
 
@@ -1441,36 +1472,24 @@ var app = (function () {
 
     			current = true;
     		},
-
-    		p(changed, ctx) {
-    			if (default_slot && default_slot.p && changed.$$scope) {
-    				default_slot.p(
-    					get_slot_changes(default_slot_template, ctx, changed, get_default_slot_changes),
-    					get_slot_context(default_slot_template, ctx, get_default_slot_context)
-    				);
+    		p(ctx, [dirty]) {
+    			if (default_slot && default_slot.p && dirty & /*$$scope*/ 8192) {
+    				default_slot.p(get_slot_context(default_slot_template, ctx, /*$$scope*/ ctx[13], get_default_slot_context), get_slot_changes(default_slot_template, /*$$scope*/ ctx[13], dirty, get_default_slot_changes));
     			}
 
-    			set_attributes(form_1, get_spread_update(form_1_levels, [
-    				(changed.$$props) && ctx.$$props
-    			]));
+    			set_attributes(form_1, get_spread_update(form_1_levels, [dirty & /*$$props*/ 256 && /*$$props*/ ctx[8]]));
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(default_slot, local);
     			current = true;
     		},
-
     		o(local) {
     			transition_out(default_slot, local);
     			current = false;
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(form_1);
-    			}
-
+    			if (detaching) detach(form_1);
     			if (default_slot) default_slot.d(detaching);
     			dispose();
     		}
@@ -1478,53 +1497,43 @@ var app = (function () {
     }
 
     function instance($$self, $$props, $$invalidate) {
-    	
+    	let { initialValues } = $$props;
+    	let { validate } = $$props;
+    	let { validationSchema } = $$props;
+    	let { onSubmit } = $$props;
 
-      let { initialValues, validate, validationSchema, onSubmit } = $$props;
+    	const { form, errors, touched, state, handleChange, handleSubmit, updateField, updateTouched } = createForm({
+    		initialValues,
+    		validationSchema,
+    		validate,
+    		onSubmit
+    	});
 
-      const {
-        form,
-        errors,
-        touched,
-        state,
-        handleChange,
-        handleSubmit,
-        updateField,
-        updateTouched
-      } = createForm({
-        initialValues,
-        validationSchema,
-        validate,
-        onSubmit
-      });
-
-      setContext(key, {
-        form,
-        errors,
-        touched,
-        state,
-        handleChange,
-        handleSubmit,
-        updateField,
-        updateTouched
-      });
+    	setContext(key, {
+    		form,
+    		errors,
+    		touched,
+    		state,
+    		handleChange,
+    		handleSubmit,
+    		updateField,
+    		updateTouched
+    	});
 
     	let { $$slots = {}, $$scope } = $$props;
 
     	$$self.$set = $$new_props => {
-    		$$invalidate('$$props', $$props = assign(assign({}, $$props), $$new_props));
-    		if ('initialValues' in $$new_props) $$invalidate('initialValues', initialValues = $$new_props.initialValues);
-    		if ('validate' in $$new_props) $$invalidate('validate', validate = $$new_props.validate);
-    		if ('validationSchema' in $$new_props) $$invalidate('validationSchema', validationSchema = $$new_props.validationSchema);
-    		if ('onSubmit' in $$new_props) $$invalidate('onSubmit', onSubmit = $$new_props.onSubmit);
-    		if ('$$scope' in $$new_props) $$invalidate('$$scope', $$scope = $$new_props.$$scope);
+    		$$invalidate(8, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+    		if ("initialValues" in $$new_props) $$invalidate(9, initialValues = $$new_props.initialValues);
+    		if ("validate" in $$new_props) $$invalidate(10, validate = $$new_props.validate);
+    		if ("validationSchema" in $$new_props) $$invalidate(11, validationSchema = $$new_props.validationSchema);
+    		if ("onSubmit" in $$new_props) $$invalidate(12, onSubmit = $$new_props.onSubmit);
+    		if ("$$scope" in $$new_props) $$invalidate(13, $$scope = $$new_props.$$scope);
     	};
 
-    	return {
-    		initialValues,
-    		validate,
-    		validationSchema,
-    		onSubmit,
+    	$$props = exclude_internal_props($$props);
+
+    	return [
     		form,
     		errors,
     		touched,
@@ -1534,32 +1543,37 @@ var app = (function () {
     		updateField,
     		updateTouched,
     		$$props,
-    		$$props: $$props = exclude_internal_props($$props),
-    		$$slots,
-    		$$scope
-    	};
+    		initialValues,
+    		validate,
+    		validationSchema,
+    		onSubmit,
+    		$$scope,
+    		$$slots
+    	];
     }
 
     class Form extends SvelteComponent {
     	constructor(options) {
     		super();
-    		init(this, options, instance, create_fragment, safe_not_equal, ["initialValues", "validate", "validationSchema", "onSubmit"]);
+
+    		init(this, options, instance, create_fragment, safe_not_equal, {
+    			initialValues: 9,
+    			validate: 10,
+    			validationSchema: 11,
+    			onSubmit: 12
+    		});
     	}
     }
 
-    /* lib/components/Field.svelte generated by Svelte v3.10.0 */
+    /* lib/components/Field.svelte generated by Svelte v3.16.5 */
 
     function create_fragment$1(ctx) {
-    	var input, dispose;
+    	let input;
+    	let dispose;
+    	let input_levels = [{ type: "text" }, { name: /*name*/ ctx[0] }, /*$$props*/ ctx[4]];
+    	let input_data = {};
 
-    	var input_levels = [
-    		{ type: "text" },
-    		{ name: ctx.name },
-    		ctx.$$props
-    	];
-
-    	var input_data = {};
-    	for (var i = 0; i < input_levels.length; i += 1) {
+    	for (let i = 0; i < input_levels.length; i += 1) {
     		input_data = assign(input_data, input_levels[i]);
     	}
 
@@ -1569,36 +1583,30 @@ var app = (function () {
     			set_attributes(input, input_data);
 
     			dispose = [
-    				listen(input, "input", ctx.input_input_handler),
-    				listen(input, "change", ctx.handleChange),
-    				listen(input, "blur", ctx.handleChange)
+    				listen(input, "input", /*input_input_handler*/ ctx[5]),
+    				listen(input, "change", /*handleChange*/ ctx[3]),
+    				listen(input, "blur", /*handleChange*/ ctx[3])
     			];
     		},
-
     		m(target, anchor) {
     			insert(target, input, anchor);
-
-    			set_input_value(input, ctx.$form[ctx.name]);
+    			set_input_value(input, /*$form*/ ctx[1][/*name*/ ctx[0]]);
     		},
-
-    		p(changed, ctx) {
-    			if ((changed.$form || changed.name) && (input.value !== ctx.$form[ctx.name])) set_input_value(input, ctx.$form[ctx.name]);
-
+    		p(ctx, [dirty]) {
     			set_attributes(input, get_spread_update(input_levels, [
     				{ type: "text" },
-    				(changed.name) && { name: ctx.name },
-    				(changed.$$props) && ctx.$$props
+    				dirty & /*name*/ 1 && ({ name: /*name*/ ctx[0] }),
+    				dirty & /*$$props*/ 16 && /*$$props*/ ctx[4]
     			]));
-    		},
 
+    			if (dirty & /*$form, name*/ 3 && input.value !== /*$form*/ ctx[1][/*name*/ ctx[0]]) {
+    				set_input_value(input, /*$form*/ ctx[1][/*name*/ ctx[0]]);
+    			}
+    		},
     		i: noop,
     		o: noop,
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(input);
-    			}
-
+    			if (detaching) detach(input);
     			run_all(dispose);
     		}
     	};
@@ -1606,53 +1614,42 @@ var app = (function () {
 
     function instance$1($$self, $$props, $$invalidate) {
     	let $form;
-
-    	
-
-      let { name } = $$props;
-
-      const { form, handleChange } = getContext(key); component_subscribe($$self, form, $$value => { $form = $$value; $$invalidate('$form', $form); });
+    	let { name } = $$props;
+    	const { form, handleChange } = getContext(key);
+    	component_subscribe($$self, form, value => $$invalidate(1, $form = value));
 
     	function input_input_handler() {
-    		form.update($$value => ($$value[name] = this.value, $$value));
-    		$$invalidate('name', name);
+    		$form[name] = this.value;
+    		form.set($form);
+    		$$invalidate(0, name);
     	}
 
     	$$self.$set = $$new_props => {
-    		$$invalidate('$$props', $$props = assign(assign({}, $$props), $$new_props));
-    		if ('name' in $$new_props) $$invalidate('name', name = $$new_props.name);
+    		$$invalidate(4, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+    		if ("name" in $$new_props) $$invalidate(0, name = $$new_props.name);
     	};
 
-    	return {
-    		name,
-    		form,
-    		handleChange,
-    		$form,
-    		$$props,
-    		input_input_handler,
-    		$$props: $$props = exclude_internal_props($$props)
-    	};
+    	$$props = exclude_internal_props($$props);
+    	return [name, $form, form, handleChange, $$props, input_input_handler];
     }
 
     class Field extends SvelteComponent {
     	constructor(options) {
     		super();
-    		init(this, options, instance$1, create_fragment$1, safe_not_equal, ["name"]);
+    		init(this, options, instance$1, create_fragment$1, safe_not_equal, { name: 0 });
     	}
     }
 
-    /* lib/components/ErrorMessage.svelte generated by Svelte v3.10.0 */
+    /* lib/components/ErrorMessage.svelte generated by Svelte v3.16.5 */
 
-    // (10:0) {#if $errors[name]}
     function create_if_block(ctx) {
-    	var small, t_value = ctx.$errors[ctx.name] + "", t;
+    	let small;
+    	let t_value = /*$errors*/ ctx[1][/*name*/ ctx[0]] + "";
+    	let t;
+    	let small_levels = [/*$$props*/ ctx[3]];
+    	let small_data = {};
 
-    	var small_levels = [
-    		ctx.$$props
-    	];
-
-    	var small_data = {};
-    	for (var i = 0; i < small_levels.length; i += 1) {
+    	for (let i = 0; i < small_levels.length; i += 1) {
     		small_data = assign(small_data, small_levels[i]);
     	}
 
@@ -1662,50 +1659,37 @@ var app = (function () {
     			t = text(t_value);
     			set_attributes(small, small_data);
     		},
-
     		m(target, anchor) {
     			insert(target, small, anchor);
     			append(small, t);
     		},
-
-    		p(changed, ctx) {
-    			if ((changed.$errors || changed.name) && t_value !== (t_value = ctx.$errors[ctx.name] + "")) {
-    				set_data(t, t_value);
-    			}
-
-    			set_attributes(small, get_spread_update(small_levels, [
-    				(changed.$$props) && ctx.$$props
-    			]));
+    		p(ctx, dirty) {
+    			if (dirty & /*$errors, name*/ 3 && t_value !== (t_value = /*$errors*/ ctx[1][/*name*/ ctx[0]] + "")) set_data(t, t_value);
+    			set_attributes(small, get_spread_update(small_levels, [dirty & /*$$props*/ 8 && /*$$props*/ ctx[3]]));
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(small);
-    			}
+    			if (detaching) detach(small);
     		}
     	};
     }
 
     function create_fragment$2(ctx) {
-    	var if_block_anchor;
-
-    	var if_block = (ctx.$errors[ctx.name]) && create_if_block(ctx);
+    	let if_block_anchor;
+    	let if_block = /*$errors*/ ctx[1][/*name*/ ctx[0]] && create_if_block(ctx);
 
     	return {
     		c() {
     			if (if_block) if_block.c();
     			if_block_anchor = empty();
     		},
-
     		m(target, anchor) {
     			if (if_block) if_block.m(target, anchor);
     			insert(target, if_block_anchor, anchor);
     		},
-
-    		p(changed, ctx) {
-    			if (ctx.$errors[ctx.name]) {
+    		p(ctx, [dirty]) {
+    			if (/*$errors*/ ctx[1][/*name*/ ctx[0]]) {
     				if (if_block) {
-    					if_block.p(changed, ctx);
+    					if_block.p(ctx, dirty);
     				} else {
     					if_block = create_if_block(ctx);
     					if_block.c();
@@ -1716,47 +1700,34 @@ var app = (function () {
     				if_block = null;
     			}
     		},
-
     		i: noop,
     		o: noop,
-
     		d(detaching) {
     			if (if_block) if_block.d(detaching);
-
-    			if (detaching) {
-    				detach(if_block_anchor);
-    			}
+    			if (detaching) detach(if_block_anchor);
     		}
     	};
     }
 
     function instance$2($$self, $$props, $$invalidate) {
     	let $errors;
-
-    	
-
-      let { name } = $$props;
-
-      const { errors } = getContext(key); component_subscribe($$self, errors, $$value => { $errors = $$value; $$invalidate('$errors', $errors); });
+    	let { name } = $$props;
+    	const { errors } = getContext(key);
+    	component_subscribe($$self, errors, value => $$invalidate(1, $errors = value));
 
     	$$self.$set = $$new_props => {
-    		$$invalidate('$$props', $$props = assign(assign({}, $$props), $$new_props));
-    		if ('name' in $$new_props) $$invalidate('name', name = $$new_props.name);
+    		$$invalidate(3, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+    		if ("name" in $$new_props) $$invalidate(0, name = $$new_props.name);
     	};
 
-    	return {
-    		name,
-    		errors,
-    		$errors,
-    		$$props,
-    		$$props: $$props = exclude_internal_props($$props)
-    	};
+    	$$props = exclude_internal_props($$props);
+    	return [name, $errors, errors, $$props];
     }
 
     class ErrorMessage extends SvelteComponent {
     	constructor(options) {
     		super();
-    		init(this, options, instance$2, create_fragment$2, safe_not_equal, ["name"]);
+    		init(this, options, instance$2, create_fragment$2, safe_not_equal, { name: 0 });
     	}
     }
 
@@ -1766,24 +1737,32 @@ var app = (function () {
     exports.createForm = createForm;
     });
 
-    unwrapExports(dist);
-    var dist_1 = dist.ErrorMessage;
-    var dist_2 = dist.Field;
-    var dist_3 = dist.Form;
-    var dist_4 = dist.createForm;
+    unwrapExports(build);
+    var build_1 = build.ErrorMessage;
+    var build_2 = build.Field;
+    var build_3 = build.Form;
+    var build_4 = build.createForm;
 
-    /* docs-src/components/Code.svelte generated by Svelte v3.10.0 */
+    /* docs-src/components/Code.svelte generated by Svelte v3.16.5 */
+
     const { document: document_1 } = globals;
 
     function add_css() {
     	var style = element("style");
-    	style.id = 'svelte-fncvw8-style';
+    	style.id = "svelte-fncvw8-style";
     	style.textContent = ".wrapper.svelte-fncvw8{position:relative;cursor:pointer}.wrapper.svelte-fncvw8:hover .copy.svelte-fncvw8{opacity:1}.copy.svelte-fncvw8{opacity:0;background:#fff;color:#000;padding:10px 14px;border-radius:4px;display:block;position:absolute;top:20px;right:20px;pointer-events:none}.heading.svelte-fncvw8{position:absolute;text-transform:uppercase;letter-spacing:2px;top:35px;left:40px;font-size:14px;font-weight:bold;color:#c7c7d4}pre.svelte-fncvw8{background:var(--secondary);padding:50px 20px 40px;border-radius:12px;line-height:1.8;overflow:scroll;font-size:16px;color:#fff;font-family:Roboto Mono, monospace}";
     	append(document_1.head, style);
     }
 
     function create_fragment$1(ctx) {
-    	var div1, h1, t1, pre_1, t2, div0, t3, dispose;
+    	let div1;
+    	let h1;
+    	let t1;
+    	let pre_1;
+    	let t2;
+    	let div0;
+    	let t3;
+    	let dispose;
 
     	return {
     		c() {
@@ -1794,102 +1773,92 @@ var app = (function () {
     			pre_1 = element("pre");
     			t2 = space();
     			div0 = element("div");
-    			t3 = text(ctx.copyText);
+    			t3 = text(/*copyText*/ ctx[1]);
     			attr(h1, "class", "heading svelte-fncvw8");
     			attr(pre_1, "class", "svelte-fncvw8");
     			attr(div0, "class", "copy svelte-fncvw8");
     			attr(div1, "class", "wrapper svelte-fncvw8");
-    			dispose = listen(pre_1, "click", ctx.copy);
+    			dispose = listen(pre_1, "click", /*copy*/ ctx[2]);
     		},
-
     		m(target, anchor) {
     			insert(target, div1, anchor);
     			append(div1, h1);
     			append(div1, t1);
     			append(div1, pre_1);
-    			ctx.pre_1_binding(pre_1);
+    			/*pre_1_binding*/ ctx[5](pre_1);
     			append(div1, t2);
     			append(div1, div0);
     			append(div0, t3);
     		},
-
-    		p(changed, ctx) {
-    			if (changed.copyText) {
-    				set_data(t3, ctx.copyText);
-    			}
+    		p(ctx, [dirty]) {
+    			if (dirty & /*copyText*/ 2) set_data(t3, /*copyText*/ ctx[1]);
     		},
-
     		i: noop,
     		o: noop,
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(div1);
-    			}
-
-    			ctx.pre_1_binding(null);
+    			if (detaching) detach(div1);
+    			/*pre_1_binding*/ ctx[5](null);
     			dispose();
     		}
     	};
     }
 
     function instance($$self, $$props, $$invalidate) {
-    	let { highlight, source } = $$props;
+    	let { highlight } = $$props;
+    	let { source } = $$props;
+    	let pre;
 
-      let pre;
-      onMount(() => {
-        pre.innerHTML = highlight; $$invalidate('pre', pre);
-      });
+    	onMount(() => {
+    		$$invalidate(0, pre.innerHTML = highlight, pre);
+    	});
 
-      let copyText = "copy";
+    	let copyText = "copy";
 
-      function copy() {
-        const textarea = document.createElement("textarea");
-        document.body.appendChild(textarea);
-        textarea.value = source;
-        textarea.select();
+    	function copy() {
+    		const textarea = document.createElement("textarea");
+    		document.body.appendChild(textarea);
+    		textarea.value = source;
+    		textarea.select();
 
-        try {
-          const success = document.execCommand("copy");
-          if (success) {
-            $$invalidate('copyText', copyText = "copied!");
-          }
-          setTimeout(() => {
-            $$invalidate('copyText', copyText = "copy");
-          }, 2000);
-        } catch (err) {
-          console.log("Oops, unable to copy");
-        }
+    		try {
+    			const success = document.execCommand("copy");
 
-        document.body.removeChild(textarea);
-      }
+    			if (success) {
+    				$$invalidate(1, copyText = "copied!");
+    			}
+
+    			setTimeout(
+    				() => {
+    					$$invalidate(1, copyText = "copy");
+    				},
+    				2000
+    			);
+    		} catch(err) {
+    			console.log("Oops, unable to copy");
+    		}
+
+    		document.body.removeChild(textarea);
+    	}
 
     	function pre_1_binding($$value) {
-    		binding_callbacks[$$value ? 'unshift' : 'push'](() => {
-    			$$invalidate('pre', pre = $$value);
+    		binding_callbacks[$$value ? "unshift" : "push"](() => {
+    			$$invalidate(0, pre = $$value);
     		});
     	}
 
     	$$self.$set = $$props => {
-    		if ('highlight' in $$props) $$invalidate('highlight', highlight = $$props.highlight);
-    		if ('source' in $$props) $$invalidate('source', source = $$props.source);
+    		if ("highlight" in $$props) $$invalidate(3, highlight = $$props.highlight);
+    		if ("source" in $$props) $$invalidate(4, source = $$props.source);
     	};
 
-    	return {
-    		highlight,
-    		source,
-    		pre,
-    		copyText,
-    		copy,
-    		pre_1_binding
-    	};
+    	return [pre, copyText, copy, highlight, source, pre_1_binding];
     }
 
     class Code extends SvelteComponent {
     	constructor(options) {
     		super();
     		if (!document_1.getElementById("svelte-fncvw8-style")) add_css();
-    		init(this, options, instance, create_fragment$1, safe_not_equal, ["highlight", "source"]);
+    		init(this, options, instance, create_fragment$1, safe_not_equal, { highlight: 3, source: 4 });
     	}
     }
 
@@ -3042,17 +3011,29 @@ var app = (function () {
 
     const highlight = prism.highlight(source, prism.languages.svelte, "svelte");
 
-    /* docs-src/examples/Basic/component.svelte generated by Svelte v3.10.0 */
+    /* docs-src/examples/Basic/component.svelte generated by Svelte v3.16.5 */
 
     function create_fragment$2(ctx) {
-    	var h1, t1, hr, t2, p, t4, form_1, label0, t6, input0, t7, label1, t9, input1, t10, button, t12, current, dispose;
-
-    	var code = new Code({
-    		props: {
-    		source: source,
-    		highlight: highlight
-    	}
-    	});
+    	let h1;
+    	let t1;
+    	let hr;
+    	let t2;
+    	let p;
+    	let t4;
+    	let form_1;
+    	let label0;
+    	let t6;
+    	let input0;
+    	let t7;
+    	let label1;
+    	let t9;
+    	let input1;
+    	let t10;
+    	let button;
+    	let t12;
+    	let current;
+    	let dispose;
+    	const code = new Code({ props: { source, highlight } });
 
     	return {
     		c() {
@@ -3078,7 +3059,7 @@ var app = (function () {
     			button = element("button");
     			button.textContent = "Submit";
     			t12 = space();
-    			code.$$.fragment.c();
+    			create_component(code.$$.fragment);
     			attr(label0, "for", "name");
     			attr(input0, "id", "name");
     			attr(input0, "name", "name");
@@ -3088,14 +3069,13 @@ var app = (function () {
     			attr(button, "type", "submit");
 
     			dispose = [
-    				listen(input0, "input", ctx.input0_input_handler),
-    				listen(input0, "change", ctx.handleChange),
-    				listen(input1, "input", ctx.input1_input_handler),
-    				listen(input1, "change", ctx.handleChange),
-    				listen(form_1, "submit", ctx.handleSubmit)
+    				listen(input0, "input", /*input0_input_handler*/ ctx[5]),
+    				listen(input0, "change", /*handleChange*/ ctx[2]),
+    				listen(input1, "input", /*input1_input_handler*/ ctx[6]),
+    				listen(input1, "change", /*handleChange*/ ctx[2]),
+    				listen(form_1, "submit", /*handleSubmit*/ ctx[3])
     			];
     		},
-
     		m(target, anchor) {
     			insert(target, h1, anchor);
     			insert(target, t1, anchor);
@@ -3107,59 +3087,46 @@ var app = (function () {
     			append(form_1, label0);
     			append(form_1, t6);
     			append(form_1, input0);
-
-    			set_input_value(input0, ctx.$form.name);
-
+    			set_input_value(input0, /*$form*/ ctx[0].name);
     			append(form_1, t7);
     			append(form_1, label1);
     			append(form_1, t9);
     			append(form_1, input1);
-
-    			set_input_value(input1, ctx.$form.email);
-
+    			set_input_value(input1, /*$form*/ ctx[0].email);
     			append(form_1, t10);
     			append(form_1, button);
     			insert(target, t12, anchor);
     			mount_component(code, target, anchor);
     			current = true;
     		},
+    		p(ctx, [dirty]) {
+    			if (dirty & /*$form*/ 1 && input0.value !== /*$form*/ ctx[0].name) {
+    				set_input_value(input0, /*$form*/ ctx[0].name);
+    			}
 
-    		p(changed, ctx) {
-    			if (changed.$form && (input0.value !== ctx.$form.name)) set_input_value(input0, ctx.$form.name);
-    			if (changed.$form && (input1.value !== ctx.$form.email)) set_input_value(input1, ctx.$form.email);
-
-    			var code_changes = {};
-    			if (changed.source) code_changes.source = source;
-    			if (changed.highlight) code_changes.highlight = highlight;
-    			code.$set(code_changes);
+    			if (dirty & /*$form*/ 1 && input1.value !== /*$form*/ ctx[0].email) {
+    				set_input_value(input1, /*$form*/ ctx[0].email);
+    			}
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(code.$$.fragment, local);
-
     			current = true;
     		},
-
     		o(local) {
     			transition_out(code.$$.fragment, local);
     			current = false;
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(h1);
-    				detach(t1);
-    				detach(hr);
-    				detach(t2);
-    				detach(p);
-    				detach(t4);
-    				detach(form_1);
-    				detach(t12);
-    			}
-
+    			if (detaching) detach(h1);
+    			if (detaching) detach(t1);
+    			if (detaching) detach(hr);
+    			if (detaching) detach(t2);
+    			if (detaching) detach(p);
+    			if (detaching) detach(t4);
+    			if (detaching) detach(form_1);
+    			if (detaching) detach(t12);
     			destroy_component(code, detaching);
-
     			run_all(dispose);
     		}
     	};
@@ -3168,40 +3135,40 @@ var app = (function () {
     function instance$1($$self, $$props, $$invalidate) {
     	let $form;
 
-    	
+    	const { form, state, handleChange, handleSubmit } = build_4({
+    		initialValues: { name: "", email: "" },
+    		onSubmit: values => {
+    			alert(JSON.stringify(values, null, 2));
+    		}
+    	});
 
-      const { form, state, handleChange, handleSubmit } = dist_4({
-        initialValues: {
-          name: "",
-          email: ""
-        },
-        onSubmit: values => {
-          alert(JSON.stringify(values, null, 2));
-        }
-      }); component_subscribe($$self, form, $$value => { $form = $$value; $$invalidate('$form', $form); });
+    	component_subscribe($$self, form, value => $$invalidate(0, $form = value));
 
     	function input0_input_handler() {
-    		form.update($$value => ($$value.name = this.value, $$value));
+    		$form.name = this.value;
+    		form.set($form);
     	}
 
     	function input1_input_handler() {
-    		form.update($$value => ($$value.email = this.value, $$value));
+    		$form.email = this.value;
+    		form.set($form);
     	}
 
-    	return {
+    	return [
+    		$form,
     		form,
     		handleChange,
     		handleSubmit,
-    		$form,
+    		state,
     		input0_input_handler,
     		input1_input_handler
-    	};
+    	];
     }
 
     class Component extends SvelteComponent {
     	constructor(options) {
     		super();
-    		init(this, options, instance$1, create_fragment$2, safe_not_equal, []);
+    		init(this, options, instance$1, create_fragment$2, safe_not_equal, {});
     	}
     }
 
@@ -11358,79 +11325,80 @@ var app = (function () {
 
     const highlight$1 = prism.highlight(source$1, prism.languages.svelte, "svelte");
 
-    /* docs-src/examples/Yup/component.svelte generated by Svelte v3.10.0 */
+    /* docs-src/examples/Yup/component.svelte generated by Svelte v3.16.5 */
 
-    // (39:2) {#if $errors.name}
     function create_if_block_1(ctx) {
-    	var small, t_value = ctx.$errors.name + "", t;
+    	let small;
+    	let t_value = /*$errors*/ ctx[1].name + "";
+    	let t;
 
     	return {
     		c() {
     			small = element("small");
     			t = text(t_value);
     		},
-
     		m(target, anchor) {
     			insert(target, small, anchor);
     			append(small, t);
     		},
-
-    		p(changed, ctx) {
-    			if ((changed.$errors) && t_value !== (t_value = ctx.$errors.name + "")) {
-    				set_data(t, t_value);
-    			}
+    		p(ctx, dirty) {
+    			if (dirty & /*$errors*/ 2 && t_value !== (t_value = /*$errors*/ ctx[1].name + "")) set_data(t, t_value);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(small);
-    			}
+    			if (detaching) detach(small);
     		}
     	};
     }
 
     // (50:2) {#if $errors.email}
     function create_if_block(ctx) {
-    	var small, t_value = ctx.$errors.email + "", t;
+    	let small;
+    	let t_value = /*$errors*/ ctx[1].email + "";
+    	let t;
 
     	return {
     		c() {
     			small = element("small");
     			t = text(t_value);
     		},
-
     		m(target, anchor) {
     			insert(target, small, anchor);
     			append(small, t);
     		},
-
-    		p(changed, ctx) {
-    			if ((changed.$errors) && t_value !== (t_value = ctx.$errors.email + "")) {
-    				set_data(t, t_value);
-    			}
+    		p(ctx, dirty) {
+    			if (dirty & /*$errors*/ 2 && t_value !== (t_value = /*$errors*/ ctx[1].email + "")) set_data(t, t_value);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(small);
-    			}
+    			if (detaching) detach(small);
     		}
     	};
     }
 
     function create_fragment$3(ctx) {
-    	var h1, t1, hr, t2, p, t6, form_1, label0, t8, input0, t9, t10, label1, t12, input1, t13, t14, button, t16, current, dispose;
-
-    	var if_block0 = (ctx.$errors.name) && create_if_block_1(ctx);
-
-    	var if_block1 = (ctx.$errors.email) && create_if_block(ctx);
-
-    	var code = new Code({
-    		props: {
-    		source: source$1,
-    		highlight: highlight$1
-    	}
-    	});
+    	let h1;
+    	let t1;
+    	let hr;
+    	let t2;
+    	let p;
+    	let t6;
+    	let form_1;
+    	let label0;
+    	let t8;
+    	let input0;
+    	let t9;
+    	let t10;
+    	let label1;
+    	let t12;
+    	let input1;
+    	let t13;
+    	let t14;
+    	let button;
+    	let t16;
+    	let current;
+    	let dispose;
+    	let if_block0 = /*$errors*/ ctx[1].name && create_if_block_1(ctx);
+    	let if_block1 = /*$errors*/ ctx[1].email && create_if_block(ctx);
+    	const code = new Code({ props: { source: source$1, highlight: highlight$1 } });
 
     	return {
     		c() {
@@ -11440,9 +11408,11 @@ var app = (function () {
     			hr = element("hr");
     			t2 = space();
     			p = element("p");
+
     			p.innerHTML = `
-			  Example using <a href="https://github.com/jquense/yup" target="_blank">Yup</a> as validation. Validation happens when input changes and upon form submission.
-			`;
+  Example using <a href="https://github.com/jquense/yup" target="_blank">Yup</a> as validation. Validation happens when input changes and upon form submission.
+`;
+
     			t6 = space();
     			form_1 = element("form");
     			label0 = element("label");
@@ -11462,7 +11432,7 @@ var app = (function () {
     			button = element("button");
     			button.textContent = "submit";
     			t16 = space();
-    			code.$$.fragment.c();
+    			create_component(code.$$.fragment);
     			attr(label0, "for", "name");
     			attr(input0, "id", "name");
     			attr(input0, "name", "name");
@@ -11472,16 +11442,15 @@ var app = (function () {
     			attr(button, "type", "submit");
 
     			dispose = [
-    				listen(input0, "input", ctx.input0_input_handler),
-    				listen(input0, "change", ctx.handleChange),
-    				listen(input0, "blur", ctx.handleChange),
-    				listen(input1, "input", ctx.input1_input_handler),
-    				listen(input1, "change", ctx.handleChange),
-    				listen(input1, "blur", ctx.handleChange),
-    				listen(form_1, "submit", ctx.handleSubmit)
+    				listen(input0, "input", /*input0_input_handler*/ ctx[7]),
+    				listen(input0, "change", /*handleChange*/ ctx[4]),
+    				listen(input0, "blur", /*handleChange*/ ctx[4]),
+    				listen(input1, "input", /*input1_input_handler*/ ctx[8]),
+    				listen(input1, "change", /*handleChange*/ ctx[4]),
+    				listen(input1, "blur", /*handleChange*/ ctx[4]),
+    				listen(form_1, "submit", /*handleSubmit*/ ctx[5])
     			];
     		},
-
     		m(target, anchor) {
     			insert(target, h1, anchor);
     			insert(target, t1, anchor);
@@ -11493,18 +11462,14 @@ var app = (function () {
     			append(form_1, label0);
     			append(form_1, t8);
     			append(form_1, input0);
-
-    			set_input_value(input0, ctx.$form.name);
-
+    			set_input_value(input0, /*$form*/ ctx[0].name);
     			append(form_1, t9);
     			if (if_block0) if_block0.m(form_1, null);
     			append(form_1, t10);
     			append(form_1, label1);
     			append(form_1, t12);
     			append(form_1, input1);
-
-    			set_input_value(input1, ctx.$form.email);
-
+    			set_input_value(input1, /*$form*/ ctx[0].email);
     			append(form_1, t13);
     			if (if_block1) if_block1.m(form_1, null);
     			append(form_1, t14);
@@ -11513,13 +11478,14 @@ var app = (function () {
     			mount_component(code, target, anchor);
     			current = true;
     		},
+    		p(ctx, [dirty]) {
+    			if (dirty & /*$form*/ 1 && input0.value !== /*$form*/ ctx[0].name) {
+    				set_input_value(input0, /*$form*/ ctx[0].name);
+    			}
 
-    		p(changed, ctx) {
-    			if (changed.$form && (input0.value !== ctx.$form.name)) set_input_value(input0, ctx.$form.name);
-
-    			if (ctx.$errors.name) {
+    			if (/*$errors*/ ctx[1].name) {
     				if (if_block0) {
-    					if_block0.p(changed, ctx);
+    					if_block0.p(ctx, dirty);
     				} else {
     					if_block0 = create_if_block_1(ctx);
     					if_block0.c();
@@ -11530,11 +11496,13 @@ var app = (function () {
     				if_block0 = null;
     			}
 
-    			if (changed.$form && (input1.value !== ctx.$form.email)) set_input_value(input1, ctx.$form.email);
+    			if (dirty & /*$form*/ 1 && input1.value !== /*$form*/ ctx[0].email) {
+    				set_input_value(input1, /*$form*/ ctx[0].email);
+    			}
 
-    			if (ctx.$errors.email) {
+    			if (/*$errors*/ ctx[1].email) {
     				if (if_block1) {
-    					if_block1.p(changed, ctx);
+    					if_block1.p(ctx, dirty);
     				} else {
     					if_block1 = create_if_block(ctx);
     					if_block1.c();
@@ -11544,96 +11512,78 @@ var app = (function () {
     				if_block1.d(1);
     				if_block1 = null;
     			}
-
-    			var code_changes = {};
-    			if (changed.source) code_changes.source = source$1;
-    			if (changed.highlight) code_changes.highlight = highlight$1;
-    			code.$set(code_changes);
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(code.$$.fragment, local);
-
     			current = true;
     		},
-
     		o(local) {
     			transition_out(code.$$.fragment, local);
     			current = false;
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(h1);
-    				detach(t1);
-    				detach(hr);
-    				detach(t2);
-    				detach(p);
-    				detach(t6);
-    				detach(form_1);
-    			}
-
+    			if (detaching) detach(h1);
+    			if (detaching) detach(t1);
+    			if (detaching) detach(hr);
+    			if (detaching) detach(t2);
+    			if (detaching) detach(p);
+    			if (detaching) detach(t6);
+    			if (detaching) detach(form_1);
     			if (if_block0) if_block0.d();
     			if (if_block1) if_block1.d();
-
-    			if (detaching) {
-    				detach(t16);
-    			}
-
+    			if (detaching) detach(t16);
     			destroy_component(code, detaching);
-
     			run_all(dispose);
     		}
     	};
     }
 
     function instance$2($$self, $$props, $$invalidate) {
-    	let $form, $errors;
+    	let $form;
+    	let $errors;
 
-    	
+    	const { form, errors, state, handleChange, handleSubmit } = build_4({
+    		initialValues: { name: "", email: "" },
+    		validationSchema: yup.object().shape({
+    			name: yup.string().required(),
+    			email: yup.string().email().required()
+    		}),
+    		onSubmit: values => {
+    			alert(JSON.stringify(values, null, 2));
+    		}
+    	});
 
-      const { form, errors, state, handleChange, handleSubmit } = dist_4({
-        initialValues: {
-          name: "",
-          email: ""
-        },
-        validationSchema: yup.object().shape({
-          name: yup.string().required(),
-          email: yup
-            .string()
-            .email()
-            .required()
-        }),
-        onSubmit: values => {
-          alert(JSON.stringify(values, null, 2));
-        }
-      }); component_subscribe($$self, form, $$value => { $form = $$value; $$invalidate('$form', $form); }); component_subscribe($$self, errors, $$value => { $errors = $$value; $$invalidate('$errors', $errors); });
+    	component_subscribe($$self, form, value => $$invalidate(0, $form = value));
+    	component_subscribe($$self, errors, value => $$invalidate(1, $errors = value));
 
     	function input0_input_handler() {
-    		form.update($$value => ($$value.name = this.value, $$value));
+    		$form.name = this.value;
+    		form.set($form);
     	}
 
     	function input1_input_handler() {
-    		form.update($$value => ($$value.email = this.value, $$value));
+    		$form.email = this.value;
+    		form.set($form);
     	}
 
-    	return {
+    	return [
+    		$form,
+    		$errors,
     		form,
     		errors,
     		handleChange,
     		handleSubmit,
-    		$form,
-    		$errors,
+    		state,
     		input0_input_handler,
     		input1_input_handler
-    	};
+    	];
     }
 
     class Component$1 extends SvelteComponent {
     	constructor(options) {
     		super();
-    		init(this, options, instance$2, create_fragment$3, safe_not_equal, []);
+    		init(this, options, instance$2, create_fragment$3, safe_not_equal, {});
     	}
     }
 
@@ -11690,79 +11640,80 @@ var app = (function () {
 
     const highlight$2 = prism.highlight(source$2, prism.languages.svelte, "svelte");
 
-    /* docs-src/examples/Custom/component.svelte generated by Svelte v3.10.0 */
+    /* docs-src/examples/Custom/component.svelte generated by Svelte v3.16.5 */
 
-    // (38:2) {#if $errors.name}
     function create_if_block_1$1(ctx) {
-    	var small, t_value = ctx.$errors.name + "", t;
+    	let small;
+    	let t_value = /*$errors*/ ctx[1].name + "";
+    	let t;
 
     	return {
     		c() {
     			small = element("small");
     			t = text(t_value);
     		},
-
     		m(target, anchor) {
     			insert(target, small, anchor);
     			append(small, t);
     		},
-
-    		p(changed, ctx) {
-    			if ((changed.$errors) && t_value !== (t_value = ctx.$errors.name + "")) {
-    				set_data(t, t_value);
-    			}
+    		p(ctx, dirty) {
+    			if (dirty & /*$errors*/ 2 && t_value !== (t_value = /*$errors*/ ctx[1].name + "")) set_data(t, t_value);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(small);
-    			}
+    			if (detaching) detach(small);
     		}
     	};
     }
 
     // (44:2) {#if $errors.email}
     function create_if_block$1(ctx) {
-    	var small, t_value = ctx.$errors.email + "", t;
+    	let small;
+    	let t_value = /*$errors*/ ctx[1].email + "";
+    	let t;
 
     	return {
     		c() {
     			small = element("small");
     			t = text(t_value);
     		},
-
     		m(target, anchor) {
     			insert(target, small, anchor);
     			append(small, t);
     		},
-
-    		p(changed, ctx) {
-    			if ((changed.$errors) && t_value !== (t_value = ctx.$errors.email + "")) {
-    				set_data(t, t_value);
-    			}
+    		p(ctx, dirty) {
+    			if (dirty & /*$errors*/ 2 && t_value !== (t_value = /*$errors*/ ctx[1].email + "")) set_data(t, t_value);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(small);
-    			}
+    			if (detaching) detach(small);
     		}
     	};
     }
 
     function create_fragment$4(ctx) {
-    	var h1, t1, hr, t2, p, t4, form_1, label0, t6, input0, t7, t8, label1, t10, input1, t11, t12, button, t14, current, dispose;
-
-    	var if_block0 = (ctx.$errors.name) && create_if_block_1$1(ctx);
-
-    	var if_block1 = (ctx.$errors.email) && create_if_block$1(ctx);
-
-    	var code = new Code({
-    		props: {
-    		source: source$2,
-    		highlight: highlight$2
-    	}
-    	});
+    	let h1;
+    	let t1;
+    	let hr;
+    	let t2;
+    	let p;
+    	let t4;
+    	let form_1;
+    	let label0;
+    	let t6;
+    	let input0;
+    	let t7;
+    	let t8;
+    	let label1;
+    	let t10;
+    	let input1;
+    	let t11;
+    	let t12;
+    	let button;
+    	let t14;
+    	let current;
+    	let dispose;
+    	let if_block0 = /*$errors*/ ctx[1].name && create_if_block_1$1(ctx);
+    	let if_block1 = /*$errors*/ ctx[1].email && create_if_block$1(ctx);
+    	const code = new Code({ props: { source: source$2, highlight: highlight$2 } });
 
     	return {
     		c() {
@@ -11792,7 +11743,7 @@ var app = (function () {
     			button = element("button");
     			button.textContent = "submit";
     			t14 = space();
-    			code.$$.fragment.c();
+    			create_component(code.$$.fragment);
     			attr(label0, "for", "name");
     			attr(input0, "id", "name");
     			attr(input0, "name", "name");
@@ -11802,14 +11753,13 @@ var app = (function () {
     			attr(button, "type", "submit");
 
     			dispose = [
-    				listen(input0, "input", ctx.input0_input_handler),
-    				listen(input0, "change", ctx.handleChange),
-    				listen(input1, "input", ctx.input1_input_handler),
-    				listen(input1, "change", ctx.handleChange),
-    				listen(form_1, "submit", ctx.handleSubmit)
+    				listen(input0, "input", /*input0_input_handler*/ ctx[7]),
+    				listen(input0, "change", /*handleChange*/ ctx[4]),
+    				listen(input1, "input", /*input1_input_handler*/ ctx[8]),
+    				listen(input1, "change", /*handleChange*/ ctx[4]),
+    				listen(form_1, "submit", /*handleSubmit*/ ctx[5])
     			];
     		},
-
     		m(target, anchor) {
     			insert(target, h1, anchor);
     			insert(target, t1, anchor);
@@ -11821,18 +11771,14 @@ var app = (function () {
     			append(form_1, label0);
     			append(form_1, t6);
     			append(form_1, input0);
-
-    			set_input_value(input0, ctx.$form.name);
-
+    			set_input_value(input0, /*$form*/ ctx[0].name);
     			append(form_1, t7);
     			if (if_block0) if_block0.m(form_1, null);
     			append(form_1, t8);
     			append(form_1, label1);
     			append(form_1, t10);
     			append(form_1, input1);
-
-    			set_input_value(input1, ctx.$form.email);
-
+    			set_input_value(input1, /*$form*/ ctx[0].email);
     			append(form_1, t11);
     			if (if_block1) if_block1.m(form_1, null);
     			append(form_1, t12);
@@ -11841,13 +11787,14 @@ var app = (function () {
     			mount_component(code, target, anchor);
     			current = true;
     		},
+    		p(ctx, [dirty]) {
+    			if (dirty & /*$form*/ 1 && input0.value !== /*$form*/ ctx[0].name) {
+    				set_input_value(input0, /*$form*/ ctx[0].name);
+    			}
 
-    		p(changed, ctx) {
-    			if (changed.$form && (input0.value !== ctx.$form.name)) set_input_value(input0, ctx.$form.name);
-
-    			if (ctx.$errors.name) {
+    			if (/*$errors*/ ctx[1].name) {
     				if (if_block0) {
-    					if_block0.p(changed, ctx);
+    					if_block0.p(ctx, dirty);
     				} else {
     					if_block0 = create_if_block_1$1(ctx);
     					if_block0.c();
@@ -11858,11 +11805,13 @@ var app = (function () {
     				if_block0 = null;
     			}
 
-    			if (changed.$form && (input1.value !== ctx.$form.email)) set_input_value(input1, ctx.$form.email);
+    			if (dirty & /*$form*/ 1 && input1.value !== /*$form*/ ctx[0].email) {
+    				set_input_value(input1, /*$form*/ ctx[0].email);
+    			}
 
-    			if (ctx.$errors.email) {
+    			if (/*$errors*/ ctx[1].email) {
     				if (if_block1) {
-    					if_block1.p(changed, ctx);
+    					if_block1.p(ctx, dirty);
     				} else {
     					if_block1 = create_if_block$1(ctx);
     					if_block1.c();
@@ -11872,99 +11821,87 @@ var app = (function () {
     				if_block1.d(1);
     				if_block1 = null;
     			}
-
-    			var code_changes = {};
-    			if (changed.source) code_changes.source = source$2;
-    			if (changed.highlight) code_changes.highlight = highlight$2;
-    			code.$set(code_changes);
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(code.$$.fragment, local);
-
     			current = true;
     		},
-
     		o(local) {
     			transition_out(code.$$.fragment, local);
     			current = false;
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(h1);
-    				detach(t1);
-    				detach(hr);
-    				detach(t2);
-    				detach(p);
-    				detach(t4);
-    				detach(form_1);
-    			}
-
+    			if (detaching) detach(h1);
+    			if (detaching) detach(t1);
+    			if (detaching) detach(hr);
+    			if (detaching) detach(t2);
+    			if (detaching) detach(p);
+    			if (detaching) detach(t4);
+    			if (detaching) detach(form_1);
     			if (if_block0) if_block0.d();
     			if (if_block1) if_block1.d();
-
-    			if (detaching) {
-    				detach(t14);
-    			}
-
+    			if (detaching) detach(t14);
     			destroy_component(code, detaching);
-
     			run_all(dispose);
     		}
     	};
     }
 
     function instance$3($$self, $$props, $$invalidate) {
-    	let $form, $errors;
+    	let $form;
+    	let $errors;
 
-    	
+    	const { form, errors, state, handleChange, handleSubmit } = build_4({
+    		initialValues: { name: "", email: "" },
+    		validate: values => {
+    			let errs = {};
 
-      const { form, errors, state, handleChange, handleSubmit } = dist_4({
-        initialValues: {
-          name: "",
-          email: ""
-        },
-        validate: values => {
-          let errs = {};
-          if (values.name === "") {
-            errs["name"] = "custom validation: name is required";
-          }
-          if (values.email === "") {
-            errs["email"] = "custom validation: email is required";
-          }
-          return errs;
-        },
-        onSubmit: values => {
-          alert(JSON.stringify(values, null, 2));
-        }
-      }); component_subscribe($$self, form, $$value => { $form = $$value; $$invalidate('$form', $form); }); component_subscribe($$self, errors, $$value => { $errors = $$value; $$invalidate('$errors', $errors); });
+    			if (values.name === "") {
+    				errs["name"] = "custom validation: name is required";
+    			}
+
+    			if (values.email === "") {
+    				errs["email"] = "custom validation: email is required";
+    			}
+
+    			return errs;
+    		},
+    		onSubmit: values => {
+    			alert(JSON.stringify(values, null, 2));
+    		}
+    	});
+
+    	component_subscribe($$self, form, value => $$invalidate(0, $form = value));
+    	component_subscribe($$self, errors, value => $$invalidate(1, $errors = value));
 
     	function input0_input_handler() {
-    		form.update($$value => ($$value.name = this.value, $$value));
+    		$form.name = this.value;
+    		form.set($form);
     	}
 
     	function input1_input_handler() {
-    		form.update($$value => ($$value.email = this.value, $$value));
+    		$form.email = this.value;
+    		form.set($form);
     	}
 
-    	return {
+    	return [
+    		$form,
+    		$errors,
     		form,
     		errors,
     		handleChange,
     		handleSubmit,
-    		$form,
-    		$errors,
+    		state,
     		input0_input_handler,
     		input1_input_handler
-    	};
+    	];
     }
 
     class Component$2 extends SvelteComponent {
     	constructor(options) {
     		super();
-    		init(this, options, instance$3, create_fragment$4, safe_not_equal, []);
+    		init(this, options, instance$3, create_fragment$4, safe_not_equal, {});
     	}
     }
 
@@ -12082,83 +12019,74 @@ var app = (function () {
 
     const highlight$3 = prism.highlight(source$3, prism.languages.svelte, "svelte");
 
-    /* docs-src/examples/Array/component.svelte generated by Svelte v3.10.0 */
+    /* docs-src/examples/Array/component.svelte generated by Svelte v3.16.5 */
 
     function add_css$1() {
     	var style = element("style");
-    	style.id = 'svelte-19gnbq6-style';
+    	style.id = "svelte-19gnbq6-style";
     	style.textContent = ".form-group.svelte-19gnbq6{display:flex;align-items:baseline}.form-title.svelte-19gnbq6{font-size:18px;font-weight:600;margin:22px 0 0}.push-right.svelte-19gnbq6{margin-right:15px}.flex.svelte-19gnbq6{display:flex}button.svelte-19gnbq6{padding:8px 24px;min-width:auto}";
     	append(document.head, style);
     }
 
     function get_each_context(ctx, list, i) {
-    	const child_ctx = Object.create(ctx);
-    	child_ctx.user = list[i];
-    	child_ctx.j = i;
+    	const child_ctx = ctx.slice();
+    	child_ctx[12] = list[i];
+    	child_ctx[14] = i;
     	return child_ctx;
     }
 
     // (85:8) {#if $errors.users[j].name}
     function create_if_block_3(ctx) {
-    	var small, t_value = ctx.$errors.users[ctx.j].name + "", t;
+    	let small;
+    	let t_value = /*$errors*/ ctx[1].users[/*j*/ ctx[14]].name + "";
+    	let t;
 
     	return {
     		c() {
     			small = element("small");
     			t = text(t_value);
     		},
-
     		m(target, anchor) {
     			insert(target, small, anchor);
     			append(small, t);
     		},
-
-    		p(changed, ctx) {
-    			if ((changed.$errors) && t_value !== (t_value = ctx.$errors.users[ctx.j].name + "")) {
-    				set_data(t, t_value);
-    			}
+    		p(ctx, dirty) {
+    			if (dirty & /*$errors*/ 2 && t_value !== (t_value = /*$errors*/ ctx[1].users[/*j*/ ctx[14]].name + "")) set_data(t, t_value);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(small);
-    			}
+    			if (detaching) detach(small);
     		}
     	};
     }
 
     // (97:8) {#if $errors.users[j].email}
     function create_if_block_2(ctx) {
-    	var small, t_value = ctx.$errors.users[ctx.j].email + "", t;
+    	let small;
+    	let t_value = /*$errors*/ ctx[1].users[/*j*/ ctx[14]].email + "";
+    	let t;
 
     	return {
     		c() {
     			small = element("small");
     			t = text(t_value);
     		},
-
     		m(target, anchor) {
     			insert(target, small, anchor);
     			append(small, t);
     		},
-
-    		p(changed, ctx) {
-    			if ((changed.$errors) && t_value !== (t_value = ctx.$errors.users[ctx.j].email + "")) {
-    				set_data(t, t_value);
-    			}
+    		p(ctx, dirty) {
+    			if (dirty & /*$errors*/ 2 && t_value !== (t_value = /*$errors*/ ctx[1].users[/*j*/ ctx[14]].email + "")) set_data(t, t_value);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(small);
-    			}
+    			if (detaching) detach(small);
     		}
     	};
     }
 
     // (102:6) {#if j === $form.users.length - 1}
     function create_if_block_1$2(ctx) {
-    	var button, dispose;
+    	let button;
+    	let dispose;
 
     	return {
     		c() {
@@ -12166,18 +12094,14 @@ var app = (function () {
     			button.textContent = "+";
     			attr(button, "type", "button");
     			attr(button, "class", "push-right svelte-19gnbq6");
-    			dispose = listen(button, "click", ctx.add);
+    			dispose = listen(button, "click", /*add*/ ctx[7]);
     		},
-
     		m(target, anchor) {
     			insert(target, button, anchor);
     		},
-
+    		p: noop,
     		d(detaching) {
-    			if (detaching) {
-    				detach(button);
-    			}
-
+    			if (detaching) detach(button);
     			dispose();
     		}
     	};
@@ -12185,7 +12109,8 @@ var app = (function () {
 
     // (105:6) {#if $form.users.length !== 1}
     function create_if_block$2(ctx) {
-    	var button, dispose;
+    	let button;
+    	let dispose;
 
     	return {
     		c() {
@@ -12193,22 +12118,16 @@ var app = (function () {
     			button.textContent = "-";
     			attr(button, "type", "button");
     			attr(button, "class", "svelte-19gnbq6");
-    			dispose = listen(button, "click", ctx.remove(ctx.j));
+    			dispose = listen(button, "click", /*remove*/ ctx[8](/*j*/ ctx[14]));
     		},
-
     		m(target, anchor) {
     			insert(target, button, anchor);
     		},
-
-    		p(changed, new_ctx) {
+    		p(new_ctx, dirty) {
     			ctx = new_ctx;
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(button);
-    			}
-
+    			if (detaching) detach(button);
     			dispose();
     		}
     	};
@@ -12216,23 +12135,33 @@ var app = (function () {
 
     // (76:2) {#each $form.users as user, j}
     function create_each_block(ctx) {
-    	var div2, div0, input0, t0, t1, div1, input1, t2, t3, t4, dispose;
+    	let div2;
+    	let div0;
+    	let input0;
+    	let input0_name_value;
+    	let t0;
+    	let t1;
+    	let div1;
+    	let input1;
+    	let input1_name_value;
+    	let t2;
+    	let t3;
+    	let t4;
+    	let dispose;
 
     	function input0_input_handler() {
-    		ctx.input0_input_handler.call(input0, ctx);
+    		/*input0_input_handler*/ ctx[10].call(input0, /*j*/ ctx[14]);
     	}
 
-    	var if_block0 = (ctx.$errors.users[ctx.j].name) && create_if_block_3(ctx);
+    	let if_block0 = /*$errors*/ ctx[1].users[/*j*/ ctx[14]].name && create_if_block_3(ctx);
 
     	function input1_input_handler() {
-    		ctx.input1_input_handler.call(input1, ctx);
+    		/*input1_input_handler*/ ctx[11].call(input1, /*j*/ ctx[14]);
     	}
 
-    	var if_block1 = (ctx.$errors.users[ctx.j].email) && create_if_block_2(ctx);
-
-    	var if_block2 = (ctx.j === ctx.$form.users.length - 1) && create_if_block_1$2(ctx);
-
-    	var if_block3 = (ctx.$form.users.length !== 1) && create_if_block$2(ctx);
+    	let if_block1 = /*$errors*/ ctx[1].users[/*j*/ ctx[14]].email && create_if_block_2(ctx);
+    	let if_block2 = /*j*/ ctx[14] === /*$form*/ ctx[0].users.length - 1 && create_if_block_1$2(ctx);
+    	let if_block3 = /*$form*/ ctx[0].users.length !== 1 && create_if_block$2(ctx);
 
     	return {
     		c() {
@@ -12250,39 +12179,34 @@ var app = (function () {
     			if (if_block2) if_block2.c();
     			t4 = space();
     			if (if_block3) if_block3.c();
-    			attr(input0, "name", `users[${ctx.j}].name`);
+    			attr(input0, "name", input0_name_value = `users[${/*j*/ ctx[14]}].name`);
     			attr(input0, "placeholder", "name");
     			attr(div0, "class", "push-right svelte-19gnbq6");
     			attr(input1, "placeholder", "email");
-    			attr(input1, "name", `users[${ctx.j}].email`);
+    			attr(input1, "name", input1_name_value = `users[${/*j*/ ctx[14]}].email`);
     			attr(div1, "class", "push-right svelte-19gnbq6");
     			attr(div2, "class", "form-group svelte-19gnbq6");
 
     			dispose = [
     				listen(input0, "input", input0_input_handler),
-    				listen(input0, "change", ctx.handleChange),
-    				listen(input0, "blur", ctx.handleChange),
+    				listen(input0, "change", /*handleChange*/ ctx[4]),
+    				listen(input0, "blur", /*handleChange*/ ctx[4]),
     				listen(input1, "input", input1_input_handler),
-    				listen(input1, "change", ctx.handleChange),
-    				listen(input1, "blur", ctx.handleChange)
+    				listen(input1, "change", /*handleChange*/ ctx[4]),
+    				listen(input1, "blur", /*handleChange*/ ctx[4])
     			];
     		},
-
     		m(target, anchor) {
     			insert(target, div2, anchor);
     			append(div2, div0);
     			append(div0, input0);
-
-    			set_input_value(input0, ctx.$form.users[ctx.j].name);
-
+    			set_input_value(input0, /*$form*/ ctx[0].users[/*j*/ ctx[14]].name);
     			append(div0, t0);
     			if (if_block0) if_block0.m(div0, null);
     			append(div2, t1);
     			append(div2, div1);
     			append(div1, input1);
-
-    			set_input_value(input1, ctx.$form.users[ctx.j].email);
-
+    			set_input_value(input1, /*$form*/ ctx[0].users[/*j*/ ctx[14]].email);
     			append(div1, t2);
     			if (if_block1) if_block1.m(div1, null);
     			append(div2, t3);
@@ -12290,14 +12214,16 @@ var app = (function () {
     			append(div2, t4);
     			if (if_block3) if_block3.m(div2, null);
     		},
-
-    		p(changed, new_ctx) {
+    		p(new_ctx, dirty) {
     			ctx = new_ctx;
-    			if (changed.$form && (input0.value !== ctx.$form.users[ctx.j].name)) set_input_value(input0, ctx.$form.users[ctx.j].name);
 
-    			if (ctx.$errors.users[ctx.j].name) {
+    			if (dirty & /*$form*/ 1 && input0.value !== /*$form*/ ctx[0].users[/*j*/ ctx[14]].name) {
+    				set_input_value(input0, /*$form*/ ctx[0].users[/*j*/ ctx[14]].name);
+    			}
+
+    			if (/*$errors*/ ctx[1].users[/*j*/ ctx[14]].name) {
     				if (if_block0) {
-    					if_block0.p(changed, ctx);
+    					if_block0.p(ctx, dirty);
     				} else {
     					if_block0 = create_if_block_3(ctx);
     					if_block0.c();
@@ -12308,11 +12234,13 @@ var app = (function () {
     				if_block0 = null;
     			}
 
-    			if (changed.$form && (input1.value !== ctx.$form.users[ctx.j].email)) set_input_value(input1, ctx.$form.users[ctx.j].email);
+    			if (dirty & /*$form*/ 1 && input1.value !== /*$form*/ ctx[0].users[/*j*/ ctx[14]].email) {
+    				set_input_value(input1, /*$form*/ ctx[0].users[/*j*/ ctx[14]].email);
+    			}
 
-    			if (ctx.$errors.users[ctx.j].email) {
+    			if (/*$errors*/ ctx[1].users[/*j*/ ctx[14]].email) {
     				if (if_block1) {
-    					if_block1.p(changed, ctx);
+    					if_block1.p(ctx, dirty);
     				} else {
     					if_block1 = create_if_block_2(ctx);
     					if_block1.c();
@@ -12323,8 +12251,10 @@ var app = (function () {
     				if_block1 = null;
     			}
 
-    			if (ctx.j === ctx.$form.users.length - 1) {
-    				if (!if_block2) {
+    			if (/*j*/ ctx[14] === /*$form*/ ctx[0].users.length - 1) {
+    				if (if_block2) {
+    					if_block2.p(ctx, dirty);
+    				} else {
     					if_block2 = create_if_block_1$2(ctx);
     					if_block2.c();
     					if_block2.m(div2, t4);
@@ -12334,8 +12264,10 @@ var app = (function () {
     				if_block2 = null;
     			}
 
-    			if (ctx.$form.users.length !== 1) {
-    				if (!if_block3) {
+    			if (/*$form*/ ctx[0].users.length !== 1) {
+    				if (if_block3) {
+    					if_block3.p(ctx, dirty);
+    				} else {
     					if_block3 = create_if_block$2(ctx);
     					if_block3.c();
     					if_block3.m(div2, null);
@@ -12345,12 +12277,8 @@ var app = (function () {
     				if_block3 = null;
     			}
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(div2);
-    			}
-
+    			if (detaching) detach(div2);
     			if (if_block0) if_block0.d();
     			if (if_block1) if_block1.d();
     			if (if_block2) if_block2.d();
@@ -12361,22 +12289,31 @@ var app = (function () {
     }
 
     function create_fragment$5(ctx) {
-    	var h10, t1, hr, t2, p, t5, form_1, h11, t7, t8, div, button0, t10, button1, t12, current, dispose;
-
-    	let each_value = ctx.$form.users;
-
+    	let h10;
+    	let t1;
+    	let hr;
+    	let t2;
+    	let p;
+    	let t5;
+    	let form_1;
+    	let h11;
+    	let t7;
+    	let t8;
+    	let div;
+    	let button0;
+    	let t10;
+    	let button1;
+    	let t12;
+    	let current;
+    	let dispose;
+    	let each_value = /*$form*/ ctx[0].users;
     	let each_blocks = [];
 
     	for (let i = 0; i < each_value.length; i += 1) {
     		each_blocks[i] = create_each_block(get_each_context(ctx, each_value, i));
     	}
 
-    	var code_1 = new Code({
-    		props: {
-    		source: source$3,
-    		highlight: highlight$3
-    	}
-    	});
+    	const code1 = new Code({ props: { source: source$3, highlight: highlight$3 } });
 
     	return {
     		c() {
@@ -12386,10 +12323,12 @@ var app = (function () {
     			hr = element("hr");
     			t2 = space();
     			p = element("p");
+
     			p.innerHTML = `
-			  Example using dynamic form with adding and removing of new fields or objects. Validation and
-			  values are persisted. Support for nested field targeting i.e.
-			  <code>\$forms.users[i].name</code>`;
+  Example using dynamic form with adding and removing of new fields or objects. Validation and
+  values are persisted. Support for nested field targeting i.e.
+  <code>\$forms.users[i].name</code>`;
+
     			t5 = space();
     			form_1 = element("form");
     			h11 = element("h1");
@@ -12408,7 +12347,7 @@ var app = (function () {
     			button1 = element("button");
     			button1.textContent = "reset";
     			t12 = space();
-    			code_1.$$.fragment.c();
+    			create_component(code1.$$.fragment);
     			attr(h11, "class", "form-title svelte-19gnbq6");
     			attr(button0, "type", "button");
     			attr(button0, "class", "push-right svelte-19gnbq6");
@@ -12417,11 +12356,10 @@ var app = (function () {
     			attr(div, "class", "flex svelte-19gnbq6");
 
     			dispose = [
-    				listen(button0, "click", ctx.handleSubmit),
-    				listen(button1, "click", ctx.handleReset)
+    				listen(button0, "click", /*handleSubmit*/ ctx[5]),
+    				listen(button1, "click", /*handleReset*/ ctx[6])
     			];
     		},
-
     		m(target, anchor) {
     			insert(target, h10, anchor);
     			insert(target, t1, anchor);
@@ -12443,20 +12381,19 @@ var app = (function () {
     			append(div, t10);
     			append(div, button1);
     			insert(target, t12, anchor);
-    			mount_component(code_1, target, anchor);
+    			mount_component(code1, target, anchor);
     			current = true;
     		},
-
-    		p(changed, ctx) {
-    			if (changed.$form || changed.$errors) {
-    				each_value = ctx.$form.users;
-
+    		p(ctx, [dirty]) {
+    			if (dirty & /*$form, remove, add, $errors, handleChange*/ 403) {
+    				each_value = /*$form*/ ctx[0].users;
     				let i;
+
     				for (i = 0; i < each_value.length; i += 1) {
     					const child_ctx = get_each_context(ctx, each_value, i);
 
     					if (each_blocks[i]) {
-    						each_blocks[i].p(changed, child_ctx);
+    						each_blocks[i].p(child_ctx, dirty);
     					} else {
     						each_blocks[i] = create_each_block(child_ctx);
     						each_blocks[i].c();
@@ -12467,100 +12404,78 @@ var app = (function () {
     				for (; i < each_blocks.length; i += 1) {
     					each_blocks[i].d(1);
     				}
+
     				each_blocks.length = each_value.length;
     			}
-
-    			var code_1_changes = {};
-    			if (changed.source) code_1_changes.source = source$3;
-    			if (changed.highlight) code_1_changes.highlight = highlight$3;
-    			code_1.$set(code_1_changes);
     		},
-
     		i(local) {
     			if (current) return;
-    			transition_in(code_1.$$.fragment, local);
-
+    			transition_in(code1.$$.fragment, local);
     			current = true;
     		},
-
     		o(local) {
-    			transition_out(code_1.$$.fragment, local);
+    			transition_out(code1.$$.fragment, local);
     			current = false;
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(h10);
-    				detach(t1);
-    				detach(hr);
-    				detach(t2);
-    				detach(p);
-    				detach(t5);
-    				detach(form_1);
-    			}
-
+    			if (detaching) detach(h10);
+    			if (detaching) detach(t1);
+    			if (detaching) detach(hr);
+    			if (detaching) detach(t2);
+    			if (detaching) detach(p);
+    			if (detaching) detach(t5);
+    			if (detaching) detach(form_1);
     			destroy_each(each_blocks, detaching);
-
-    			if (detaching) {
-    				detach(t12);
-    			}
-
-    			destroy_component(code_1, detaching);
-
+    			if (detaching) detach(t12);
+    			destroy_component(code1, detaching);
     			run_all(dispose);
     		}
     	};
     }
 
     function instance$4($$self, $$props, $$invalidate) {
-    	let $form, $errors;
+    	let $form;
+    	let $errors;
 
-    	
+    	const { form, errors, state, handleChange, handleSubmit, handleReset } = build_4({
+    		initialValues: { users: [{ name: "", email: "" }] },
+    		validationSchema: yup.object().shape({
+    			users: yup.array().of(yup.object().shape({
+    				name: yup.string().required(),
+    				email: yup.string().email().required()
+    			}))
+    		}),
+    		onSubmit: values => {
+    			alert(JSON.stringify(values, null, 2));
+    		}
+    	});
 
-      const { form, errors, state, handleChange, handleSubmit, handleReset } = dist_4({
-        initialValues: {
-          users: [
-            {
-              name: "",
-              email: ""
-            }
-          ]
-        },
-        validationSchema: yup.object().shape({
-          users: yup.array().of(
-            yup.object().shape({
-              name: yup.string().required(),
-              email: yup
-                .string()
-                .email()
-                .required()
-            })
-          )
-        }),
-        onSubmit: values => {
-          alert(JSON.stringify(values, null, 2));
-        }
-      }); component_subscribe($$self, form, $$value => { $form = $$value; $$invalidate('$form', $form); }); component_subscribe($$self, errors, $$value => { $errors = $$value; $$invalidate('$errors', $errors); });
+    	component_subscribe($$self, form, value => $$invalidate(0, $form = value));
+    	component_subscribe($$self, errors, value => $$invalidate(1, $errors = value));
 
-      const add = () => {
-        $form.users = $form.users.concat({ name: "", email: "" }); form.set($form);
-        $errors.users = $errors.users.concat({ name: "", email: "" }); errors.set($errors);
-      };
+    	const add = () => {
+    		set_store_value(form, $form.users = $form.users.concat({ name: "", email: "" }), $form);
+    		set_store_value(errors, $errors.users = $errors.users.concat({ name: "", email: "" }), $errors);
+    	};
 
-      const remove = i => () => {
-        $form.users = $form.users.filter((u, j) => j !== i); form.set($form);
-        $errors.users = $errors.users.filter((u, j) => j !== i); errors.set($errors);
-      };
+    	const remove = i => () => {
+    		set_store_value(form, $form.users = $form.users.filter((u, j) => j !== i), $form);
+    		set_store_value(errors, $errors.users = $errors.users.filter((u, j) => j !== i), $errors);
+    	};
 
-    	function input0_input_handler({ j }) {
-    		form.update($$value => ($$value.users[j].name = this.value, $$value));
+    	function input0_input_handler(j) {
+    		$form.users[j].name = this.value;
+    		form.set($form);
     	}
 
-    	function input1_input_handler({ j }) {
-    		form.update($$value => ($$value.users[j].email = this.value, $$value));
+    	function input1_input_handler(j) {
+    		$form.users[j].email = this.value;
+    		form.set($form);
     	}
 
-    	return {
+    	return [
+    		$form,
+    		$errors,
     		form,
     		errors,
     		handleChange,
@@ -12568,18 +12483,17 @@ var app = (function () {
     		handleReset,
     		add,
     		remove,
-    		$form,
-    		$errors,
+    		state,
     		input0_input_handler,
     		input1_input_handler
-    	};
+    	];
     }
 
     class Component$3 extends SvelteComponent {
     	constructor(options) {
     		super();
     		if (!document.getElementById("svelte-19gnbq6-style")) add_css$1();
-    		init(this, options, instance$4, create_fragment$5, safe_not_equal, []);
+    		init(this, options, instance$4, create_fragment$5, safe_not_equal, {});
     	}
     }
 
@@ -12618,41 +12532,44 @@ var app = (function () {
 
     const highlight$4 = prism.highlight(source$4, prism.languages.svelte, "svelte");
 
-    /* docs-src/examples/Helpers/component.svelte generated by Svelte v3.10.0 */
+    /* docs-src/examples/Helpers/component.svelte generated by Svelte v3.16.5 */
 
-    // (28:0) <Form {...formProps}>
     function create_default_slot(ctx) {
-    	var label0, t1, t2, t3, label1, t5, t6, t7, button, current;
-
-    	var field0 = new dist_2({ props: { name: "name" } });
-
-    	var errormessage0 = new dist_1({ props: { name: "name" } });
-
-    	var field1 = new dist_2({ props: { name: "email" } });
-
-    	var errormessage1 = new dist_1({ props: { name: "email" } });
+    	let label0;
+    	let t1;
+    	let t2;
+    	let t3;
+    	let label1;
+    	let t5;
+    	let t6;
+    	let t7;
+    	let button;
+    	let current;
+    	const field0 = new build_2({ props: { name: "name" } });
+    	const errormessage0 = new build_1({ props: { name: "name" } });
+    	const field1 = new build_2({ props: { name: "email" } });
+    	const errormessage1 = new build_1({ props: { name: "email" } });
 
     	return {
     		c() {
     			label0 = element("label");
     			label0.textContent = "name";
     			t1 = space();
-    			field0.$$.fragment.c();
+    			create_component(field0.$$.fragment);
     			t2 = space();
-    			errormessage0.$$.fragment.c();
+    			create_component(errormessage0.$$.fragment);
     			t3 = space();
     			label1 = element("label");
     			label1.textContent = "email";
     			t5 = space();
-    			field1.$$.fragment.c();
+    			create_component(field1.$$.fragment);
     			t6 = space();
-    			errormessage1.$$.fragment.c();
+    			create_component(errormessage1.$$.fragment);
     			t7 = space();
     			button = element("button");
     			button.textContent = "submit";
     			attr(button, "type", "submit");
     		},
-
     		m(target, anchor) {
     			insert(target, label0, anchor);
     			insert(target, t1, anchor);
@@ -12669,22 +12586,15 @@ var app = (function () {
     			insert(target, button, anchor);
     			current = true;
     		},
-
     		p: noop,
-
     		i(local) {
     			if (current) return;
     			transition_in(field0.$$.fragment, local);
-
     			transition_in(errormessage0.$$.fragment, local);
-
     			transition_in(field1.$$.fragment, local);
-
     			transition_in(errormessage1.$$.fragment, local);
-
     			current = true;
     		},
-
     		o(local) {
     			transition_out(field0.$$.fragment, local);
     			transition_out(errormessage0.$$.fragment, local);
@@ -12692,65 +12602,46 @@ var app = (function () {
     			transition_out(errormessage1.$$.fragment, local);
     			current = false;
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(label0);
-    				detach(t1);
-    			}
-
+    			if (detaching) detach(label0);
+    			if (detaching) detach(t1);
     			destroy_component(field0, detaching);
-
-    			if (detaching) {
-    				detach(t2);
-    			}
-
+    			if (detaching) detach(t2);
     			destroy_component(errormessage0, detaching);
-
-    			if (detaching) {
-    				detach(t3);
-    				detach(label1);
-    				detach(t5);
-    			}
-
+    			if (detaching) detach(t3);
+    			if (detaching) detach(label1);
+    			if (detaching) detach(t5);
     			destroy_component(field1, detaching);
-
-    			if (detaching) {
-    				detach(t6);
-    			}
-
+    			if (detaching) detach(t6);
     			destroy_component(errormessage1, detaching);
-
-    			if (detaching) {
-    				detach(t7);
-    				detach(button);
-    			}
+    			if (detaching) detach(t7);
+    			if (detaching) detach(button);
     		}
     	};
     }
 
     function create_fragment$6(ctx) {
-    	var h1, t1, hr, t2, p, t10, t11, current;
-
-    	var form_spread_levels = [
-    		ctx.formProps
-    	];
+    	let h1;
+    	let t1;
+    	let hr;
+    	let t2;
+    	let p;
+    	let t10;
+    	let t11;
+    	let current;
+    	const form_spread_levels = [/*formProps*/ ctx[0]];
 
     	let form_props = {
     		$$slots: { default: [create_default_slot] },
     		$$scope: { ctx }
     	};
-    	for (var i = 0; i < form_spread_levels.length; i += 1) {
+
+    	for (let i = 0; i < form_spread_levels.length; i += 1) {
     		form_props = assign(form_props, form_spread_levels[i]);
     	}
-    	var form = new dist_3({ props: form_props });
 
-    	var code = new Code({
-    		props: {
-    		source: source$4,
-    		highlight: highlight$4
-    	}
-    	});
+    	const form = new build_3({ props: form_props });
+    	const code = new Code({ props: { source: source$4, highlight: highlight$4 } });
 
     	return {
     		c() {
@@ -12760,15 +12651,16 @@ var app = (function () {
     			hr = element("hr");
     			t2 = space();
     			p = element("p");
-    			p.innerHTML = `
-			  Example <span>Form</span>, <span>Field</span> and <span>ErrorMessage</span> helper components.
-			`;
-    			t10 = space();
-    			form.$$.fragment.c();
-    			t11 = space();
-    			code.$$.fragment.c();
-    		},
 
+    			p.innerHTML = `
+  Example <span>Form</span>, <span>Field</span> and <span>ErrorMessage</span> helper components.
+`;
+
+    			t10 = space();
+    			create_component(form.$$.fragment);
+    			t11 = space();
+    			create_component(code.$$.fragment);
+    		},
     		m(target, anchor) {
     			insert(target, h1, anchor);
     			insert(target, t1, anchor);
@@ -12781,80 +12673,61 @@ var app = (function () {
     			mount_component(code, target, anchor);
     			current = true;
     		},
+    		p(ctx, [dirty]) {
+    			const form_changes = (dirty & /*formProps*/ 1)
+    			? get_spread_update(form_spread_levels, [get_spread_object(/*formProps*/ ctx[0])])
+    			: {};
 
-    		p(changed, ctx) {
-    			var form_changes = (changed.formProps) ? get_spread_update(form_spread_levels, [
-    									ctx.formProps
-    								]) : {};
-    			if (changed.$$scope) form_changes.$$scope = { changed, ctx };
+    			if (dirty & /*$$scope*/ 2) {
+    				form_changes.$$scope = { dirty, ctx };
+    			}
+
     			form.$set(form_changes);
-
-    			var code_changes = {};
-    			if (changed.source) code_changes.source = source$4;
-    			if (changed.highlight) code_changes.highlight = highlight$4;
-    			code.$set(code_changes);
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(form.$$.fragment, local);
-
     			transition_in(code.$$.fragment, local);
-
     			current = true;
     		},
-
     		o(local) {
     			transition_out(form.$$.fragment, local);
     			transition_out(code.$$.fragment, local);
     			current = false;
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(h1);
-    				detach(t1);
-    				detach(hr);
-    				detach(t2);
-    				detach(p);
-    				detach(t10);
-    			}
-
+    			if (detaching) detach(h1);
+    			if (detaching) detach(t1);
+    			if (detaching) detach(hr);
+    			if (detaching) detach(t2);
+    			if (detaching) detach(p);
+    			if (detaching) detach(t10);
     			destroy_component(form, detaching);
-
-    			if (detaching) {
-    				detach(t11);
-    			}
-
+    			if (detaching) detach(t11);
     			destroy_component(code, detaching);
     		}
     	};
     }
 
     function instance$5($$self) {
-    	
+    	const formProps = {
+    		initialValues: { name: "", email: "" },
+    		validationSchema: yup.object().shape({
+    			name: yup.string().required(),
+    			email: yup.string().email().required()
+    		}),
+    		onSubmit: values => {
+    			alert(JSON.stringify(values, null, 2));
+    		}
+    	};
 
-      const formProps = {
-        initialValues: { name: "", email: "" },
-        validationSchema: yup.object().shape({
-          name: yup.string().required(),
-          email: yup
-            .string()
-            .email()
-            .required()
-        }),
-        onSubmit: values => {
-          alert(JSON.stringify(values, null, 2));
-        }
-      };
-
-    	return { formProps };
+    	return [formProps];
     }
 
     class Component$4 extends SvelteComponent {
     	constructor(options) {
     		super();
-    		init(this, options, instance$5, create_fragment$6, safe_not_equal, []);
+    		init(this, options, instance$5, create_fragment$6, safe_not_equal, {});
     	}
     }
 
@@ -12919,13 +12792,6 @@ var app = (function () {
         }
         return { set, update, subscribe };
     }
-    /**
-     * Derived value store by synchronizing one or more readable stores and
-     * applying an aggregation function over its input values.
-     * @param {Stores} stores input stores
-     * @param {function(Stores=, function(*)=):*}fn function callback that aggregates the values
-     * @param {*=}initial_value when used asynchronously
-     */
     function derived(stores, fn, initial_value) {
         const single = !Array.isArray(stores);
         const stores_array = single
@@ -13410,23 +13276,17 @@ var app = (function () {
       );
     }
 
-    /* node_modules/svelte-routing/src/Router.svelte generated by Svelte v3.10.0 */
+    /* node_modules/svelte-routing/src/Router.svelte generated by Svelte v3.16.5 */
 
     function create_fragment$7(ctx) {
-    	var current;
-
-    	const default_slot_template = ctx.$$slots.default;
-    	const default_slot = create_slot(default_slot_template, ctx, null);
+    	let current;
+    	const default_slot_template = /*$$slots*/ ctx[16].default;
+    	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[15], null);
 
     	return {
     		c() {
     			if (default_slot) default_slot.c();
     		},
-
-    		l(nodes) {
-    			if (default_slot) default_slot.l(nodes);
-    		},
-
     		m(target, anchor) {
     			if (default_slot) {
     				default_slot.m(target, anchor);
@@ -13434,27 +13294,20 @@ var app = (function () {
 
     			current = true;
     		},
-
-    		p(changed, ctx) {
-    			if (default_slot && default_slot.p && changed.$$scope) {
-    				default_slot.p(
-    					get_slot_changes(default_slot_template, ctx, changed, null),
-    					get_slot_context(default_slot_template, ctx, null)
-    				);
+    		p(ctx, [dirty]) {
+    			if (default_slot && default_slot.p && dirty & /*$$scope*/ 32768) {
+    				default_slot.p(get_slot_context(default_slot_template, ctx, /*$$scope*/ ctx[15], null), get_slot_changes(default_slot_template, /*$$scope*/ ctx[15], dirty, null));
     			}
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(default_slot, local);
     			current = true;
     		},
-
     		o(local) {
     			transition_out(default_slot, local);
     			current = false;
     		},
-
     		d(detaching) {
     			if (default_slot) default_slot.d(detaching);
     		}
@@ -13462,177 +13315,177 @@ var app = (function () {
     }
 
     function instance$6($$self, $$props, $$invalidate) {
-    	let $base, $location, $routes;
+    	let $base;
+    	let $location;
+    	let $routes;
+    	let { basepath = "/" } = $$props;
+    	let { url = null } = $$props;
+    	const locationContext = getContext(LOCATION);
+    	const routerContext = getContext(ROUTER);
+    	const routes = writable([]);
+    	component_subscribe($$self, routes, value => $$invalidate(8, $routes = value));
+    	const activeRoute = writable(null);
+    	let hasActiveRoute = false;
+    	const location = locationContext || writable(url ? { pathname: url } : globalHistory.location);
+    	component_subscribe($$self, location, value => $$invalidate(7, $location = value));
 
-    	
+    	const base = routerContext
+    	? routerContext.routerBase
+    	: writable({ path: basepath, uri: basepath });
 
-      let { basepath = "/", url = null } = $$props;
+    	component_subscribe($$self, base, value => $$invalidate(6, $base = value));
 
-      const locationContext = getContext(LOCATION);
-      const routerContext = getContext(ROUTER);
+    	const routerBase = derived([base, activeRoute], ([base, activeRoute]) => {
+    		if (activeRoute === null) {
+    			return base;
+    		}
 
-      const routes = writable([]); component_subscribe($$self, routes, $$value => { $routes = $$value; $$invalidate('$routes', $routes); });
-      const activeRoute = writable(null);
-      let hasActiveRoute = false; // Used in SSR to synchronously set that a Route is active.
+    		const { path: basepath } = base;
+    		const { route, uri } = activeRoute;
 
-      // If locationContext is not set, this is the topmost Router in the tree.
-      // If the `url` prop is given we force the location to it.
-      const location =
-        locationContext ||
-        writable(url ? { pathname: url } : globalHistory.location); component_subscribe($$self, location, $$value => { $location = $$value; $$invalidate('$location', $location); });
+    		const path = route.default
+    		? basepath
+    		: route.path.replace(/\*.*$/, "");
 
-      // If routerContext is set, the routerBase of the parent Router
-      // will be the base for this Router's descendants.
-      // If routerContext is not set, the path and resolved uri will both
-      // have the value of the basepath prop.
-      const base = routerContext
-        ? routerContext.routerBase
-        : writable({
-            path: basepath,
-            uri: basepath
-          }); component_subscribe($$self, base, $$value => { $base = $$value; $$invalidate('$base', $base); });
+    		return { path, uri };
+    	});
 
-      const routerBase = derived([base, activeRoute], ([base, activeRoute]) => {
-        // If there is no activeRoute, the routerBase will be identical to the base.
-        if (activeRoute === null) {
-          return base;
-        }
+    	function registerRoute(route) {
+    		const { path: basepath } = $base;
+    		let { path } = route;
+    		route._path = path;
+    		route.path = combinePaths(basepath, path);
 
-        const { path: basepath } = base;
-        const { route, uri } = activeRoute;
-        // Remove the potential /* or /*splatname from
-        // the end of the child Routes relative paths.
-        const path = route.default ? basepath : route.path.replace(/\*.*$/, "");
+    		if (typeof window === "undefined") {
+    			if (hasActiveRoute) {
+    				return;
+    			}
 
-        return { path, uri };
-      });
+    			const matchingRoute = match(route, $location.pathname);
 
-      function registerRoute(route) {
-        const { path: basepath } = $base;
-        let { path } = route;
+    			if (matchingRoute) {
+    				activeRoute.set(matchingRoute);
+    				hasActiveRoute = true;
+    			}
+    		} else {
+    			routes.update(rs => {
+    				rs.push(route);
+    				return rs;
+    			});
+    		}
+    	}
 
-        // We store the original path in the _path property so we can reuse
-        // it when the basepath changes. The only thing that matters is that
-        // the route reference is intact, so mutation is fine.
-        route._path = path;
-        route.path = combinePaths(basepath, path);
+    	function unregisterRoute(route) {
+    		routes.update(rs => {
+    			const index = rs.indexOf(route);
+    			rs.splice(index, 1);
+    			return rs;
+    		});
+    	}
 
-        if (typeof window === "undefined") {
-          // In SSR we should set the activeRoute immediately if it is a match.
-          // If there are more Routes being registered after a match is found,
-          // we just skip them.
-          if (hasActiveRoute) {
-            return;
-          }
+    	if (!locationContext) {
+    		onMount(() => {
+    			const unlisten = globalHistory.listen(history => {
+    				location.set(history.location);
+    			});
 
-          const matchingRoute = match(route, $location.pathname);
-          if (matchingRoute) {
-            activeRoute.set(matchingRoute);
-            hasActiveRoute = true;
-          }
-        } else {
-          routes.update(rs => {
-            rs.push(route);
-            return rs;
-          });
-        }
-      }
+    			return unlisten;
+    		});
 
-      function unregisterRoute(route) {
-        routes.update(rs => {
-          const index = rs.indexOf(route);
-          rs.splice(index, 1);
-          return rs;
-        });
-      }
+    		setContext(LOCATION, location);
+    	}
 
-      if (!locationContext) {
-        // The topmost Router in the tree is responsible for updating
-        // the location store and supplying it through context.
-        onMount(() => {
-          const unlisten = globalHistory.listen(history => {
-            location.set(history.location);
-          });
-
-          return unlisten;
-        });
-
-        setContext(LOCATION, location);
-      }
-
-      setContext(ROUTER, {
-        activeRoute,
-        base,
-        routerBase,
-        registerRoute,
-        unregisterRoute
-      });
+    	setContext(ROUTER, {
+    		activeRoute,
+    		base,
+    		routerBase,
+    		registerRoute,
+    		unregisterRoute
+    	});
 
     	let { $$slots = {}, $$scope } = $$props;
 
     	$$self.$set = $$props => {
-    		if ('basepath' in $$props) $$invalidate('basepath', basepath = $$props.basepath);
-    		if ('url' in $$props) $$invalidate('url', url = $$props.url);
-    		if ('$$scope' in $$props) $$invalidate('$$scope', $$scope = $$props.$$scope);
+    		if ("basepath" in $$props) $$invalidate(3, basepath = $$props.basepath);
+    		if ("url" in $$props) $$invalidate(4, url = $$props.url);
+    		if ("$$scope" in $$props) $$invalidate(15, $$scope = $$props.$$scope);
     	};
 
-    	$$self.$$.update = ($$dirty = { $base: 1, $routes: 1, $location: 1 }) => {
-    		if ($$dirty.$base) { {
-            const { path: basepath } = $base;
-            routes.update(rs => {
-              rs.forEach(r => (r.path = combinePaths(basepath, r._path)));
-              return rs;
-            });
-          } }
-    		if ($$dirty.$routes || $$dirty.$location) { {
-            const bestMatch = pick($routes, $location.pathname);
-            activeRoute.set(bestMatch);
-          } }
+    	$$self.$$.update = () => {
+    		if ($$self.$$.dirty & /*$base*/ 64) {
+    			$: {
+    				const { path: basepath } = $base;
+
+    				routes.update(rs => {
+    					rs.forEach(r => r.path = combinePaths(basepath, r._path));
+    					return rs;
+    				});
+    			}
+    		}
+
+    		if ($$self.$$.dirty & /*$routes, $location*/ 384) {
+    			$: {
+    				const bestMatch = pick($routes, $location.pathname);
+    				activeRoute.set(bestMatch);
+    			}
+    		}
     	};
 
-    	return {
-    		basepath,
-    		url,
+    	return [
     		routes,
     		location,
     		base,
-    		$$slots,
-    		$$scope
-    	};
+    		basepath,
+    		url,
+    		hasActiveRoute,
+    		$base,
+    		$location,
+    		$routes,
+    		locationContext,
+    		routerContext,
+    		activeRoute,
+    		routerBase,
+    		registerRoute,
+    		unregisterRoute,
+    		$$scope,
+    		$$slots
+    	];
     }
 
     class Router extends SvelteComponent {
     	constructor(options) {
     		super();
-    		init(this, options, instance$6, create_fragment$7, safe_not_equal, ["basepath", "url"]);
+    		init(this, options, instance$6, create_fragment$7, safe_not_equal, { basepath: 3, url: 4 });
     	}
     }
 
-    /* node_modules/svelte-routing/src/Route.svelte generated by Svelte v3.10.0 */
+    /* node_modules/svelte-routing/src/Route.svelte generated by Svelte v3.16.5 */
 
-    const get_default_slot_changes = ({ routeParams, $location }) => ({ params: routeParams, location: $location });
-    const get_default_slot_context = ({ routeParams, $location }) => ({
-    	params: routeParams,
-    	location: $location
+    const get_default_slot_changes = dirty => ({
+    	params: dirty & /*routeParams*/ 2,
+    	location: dirty & /*$location*/ 16
+    });
+
+    const get_default_slot_context = ctx => ({
+    	params: /*routeParams*/ ctx[1],
+    	location: /*$location*/ ctx[4]
     });
 
     // (40:0) {#if $activeRoute !== null && $activeRoute.route === route}
     function create_if_block$3(ctx) {
-    	var current_block_type_index, if_block, if_block_anchor, current;
+    	let current_block_type_index;
+    	let if_block;
+    	let if_block_anchor;
+    	let current;
+    	const if_block_creators = [create_if_block_1$3, create_else_block];
+    	const if_blocks = [];
 
-    	var if_block_creators = [
-    		create_if_block_1$3,
-    		create_else_block
-    	];
-
-    	var if_blocks = [];
-
-    	function select_block_type(changed, ctx) {
-    		if (ctx.component !== null) return 0;
+    	function select_block_type(ctx, dirty) {
+    		if (/*component*/ ctx[0] !== null) return 0;
     		return 1;
     	}
 
-    	current_block_type_index = select_block_type(null, ctx);
+    	current_block_type_index = select_block_type(ctx);
     	if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
 
     	return {
@@ -13640,72 +13493,62 @@ var app = (function () {
     			if_block.c();
     			if_block_anchor = empty();
     		},
-
     		m(target, anchor) {
     			if_blocks[current_block_type_index].m(target, anchor);
     			insert(target, if_block_anchor, anchor);
     			current = true;
     		},
+    		p(ctx, dirty) {
+    			let previous_block_index = current_block_type_index;
+    			current_block_type_index = select_block_type(ctx);
 
-    		p(changed, ctx) {
-    			var previous_block_index = current_block_type_index;
-    			current_block_type_index = select_block_type(changed, ctx);
     			if (current_block_type_index === previous_block_index) {
-    				if_blocks[current_block_type_index].p(changed, ctx);
+    				if_blocks[current_block_type_index].p(ctx, dirty);
     			} else {
     				group_outros();
+
     				transition_out(if_blocks[previous_block_index], 1, 1, () => {
     					if_blocks[previous_block_index] = null;
     				});
-    				check_outros();
 
+    				check_outros();
     				if_block = if_blocks[current_block_type_index];
+
     				if (!if_block) {
     					if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
     					if_block.c();
     				}
+
     				transition_in(if_block, 1);
     				if_block.m(if_block_anchor.parentNode, if_block_anchor);
     			}
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(if_block);
     			current = true;
     		},
-
     		o(local) {
     			transition_out(if_block);
     			current = false;
     		},
-
     		d(detaching) {
     			if_blocks[current_block_type_index].d(detaching);
-
-    			if (detaching) {
-    				detach(if_block_anchor);
-    			}
+    			if (detaching) detach(if_block_anchor);
     		}
     	};
     }
 
     // (43:2) {:else}
     function create_else_block(ctx) {
-    	var current;
-
-    	const default_slot_template = ctx.$$slots.default;
-    	const default_slot = create_slot(default_slot_template, ctx, get_default_slot_context);
+    	let current;
+    	const default_slot_template = /*$$slots*/ ctx[13].default;
+    	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[12], get_default_slot_context);
 
     	return {
     		c() {
     			if (default_slot) default_slot.c();
     		},
-
-    		l(nodes) {
-    			if (default_slot) default_slot.l(nodes);
-    		},
-
     		m(target, anchor) {
     			if (default_slot) {
     				default_slot.m(target, anchor);
@@ -13713,27 +13556,20 @@ var app = (function () {
 
     			current = true;
     		},
-
-    		p(changed, ctx) {
-    			if (default_slot && default_slot.p && (changed.$$scope || changed.routeParams || changed.$location)) {
-    				default_slot.p(
-    					get_slot_changes(default_slot_template, ctx, changed, get_default_slot_changes),
-    					get_slot_context(default_slot_template, ctx, get_default_slot_context)
-    				);
+    		p(ctx, dirty) {
+    			if (default_slot && default_slot.p && dirty & /*$$scope, routeParams, $location*/ 4114) {
+    				default_slot.p(get_slot_context(default_slot_template, ctx, /*$$scope*/ ctx[12], get_default_slot_context), get_slot_changes(default_slot_template, /*$$scope*/ ctx[12], dirty, get_default_slot_changes));
     			}
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(default_slot, local);
     			current = true;
     		},
-
     		o(local) {
     			transition_out(default_slot, local);
     			current = false;
     		},
-
     		d(detaching) {
     			if (default_slot) default_slot.d(detaching);
     		}
@@ -13742,21 +13578,24 @@ var app = (function () {
 
     // (41:2) {#if component !== null}
     function create_if_block_1$3(ctx) {
-    	var switch_instance_anchor, current;
+    	let switch_instance_anchor;
+    	let current;
 
-    	var switch_instance_spread_levels = [
-    		{ location: ctx.$location },
-    		ctx.routeParams,
-    		ctx.routeProps
+    	const switch_instance_spread_levels = [
+    		{ location: /*$location*/ ctx[4] },
+    		/*routeParams*/ ctx[1],
+    		/*routeProps*/ ctx[2]
     	];
 
-    	var switch_value = ctx.component;
+    	var switch_value = /*component*/ ctx[0];
 
     	function switch_props(ctx) {
     		let switch_instance_props = {};
-    		for (var i = 0; i < switch_instance_spread_levels.length; i += 1) {
+
+    		for (let i = 0; i < switch_instance_spread_levels.length; i += 1) {
     			switch_instance_props = assign(switch_instance_props, switch_instance_spread_levels[i]);
     		}
+
     		return { props: switch_instance_props };
     	}
 
@@ -13766,10 +13605,9 @@ var app = (function () {
 
     	return {
     		c() {
-    			if (switch_instance) switch_instance.$$.fragment.c();
+    			if (switch_instance) create_component(switch_instance.$$.fragment);
     			switch_instance_anchor = empty();
     		},
-
     		m(target, anchor) {
     			if (switch_instance) {
     				mount_component(switch_instance, target, anchor);
@@ -13778,83 +13616,74 @@ var app = (function () {
     			insert(target, switch_instance_anchor, anchor);
     			current = true;
     		},
+    		p(ctx, dirty) {
+    			const switch_instance_changes = (dirty & /*$location, routeParams, routeProps*/ 22)
+    			? get_spread_update(switch_instance_spread_levels, [
+    					dirty & /*$location*/ 16 && ({ location: /*$location*/ ctx[4] }),
+    					dirty & /*routeParams*/ 2 && get_spread_object(/*routeParams*/ ctx[1]),
+    					dirty & /*routeProps*/ 4 && get_spread_object(/*routeProps*/ ctx[2])
+    				])
+    			: {};
 
-    		p(changed, ctx) {
-    			var switch_instance_changes = (changed.$location || changed.routeParams || changed.routeProps) ? get_spread_update(switch_instance_spread_levels, [
-    									(changed.$location) && { location: ctx.$location },
-    			(changed.routeParams) && ctx.routeParams,
-    			(changed.routeProps) && ctx.routeProps
-    								]) : {};
-
-    			if (switch_value !== (switch_value = ctx.component)) {
+    			if (switch_value !== (switch_value = /*component*/ ctx[0])) {
     				if (switch_instance) {
     					group_outros();
     					const old_component = switch_instance;
+
     					transition_out(old_component.$$.fragment, 1, 0, () => {
     						destroy_component(old_component, 1);
     					});
+
     					check_outros();
     				}
 
     				if (switch_value) {
     					switch_instance = new switch_value(switch_props());
-
-    					switch_instance.$$.fragment.c();
+    					create_component(switch_instance.$$.fragment);
     					transition_in(switch_instance.$$.fragment, 1);
     					mount_component(switch_instance, switch_instance_anchor.parentNode, switch_instance_anchor);
     				} else {
     					switch_instance = null;
     				}
-    			}
-
-    			else if (switch_value) {
+    			} else if (switch_value) {
     				switch_instance.$set(switch_instance_changes);
     			}
     		},
-
     		i(local) {
     			if (current) return;
     			if (switch_instance) transition_in(switch_instance.$$.fragment, local);
-
     			current = true;
     		},
-
     		o(local) {
     			if (switch_instance) transition_out(switch_instance.$$.fragment, local);
     			current = false;
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(switch_instance_anchor);
-    			}
-
+    			if (detaching) detach(switch_instance_anchor);
     			if (switch_instance) destroy_component(switch_instance, detaching);
     		}
     	};
     }
 
     function create_fragment$8(ctx) {
-    	var if_block_anchor, current;
-
-    	var if_block = (ctx.$activeRoute !== null && ctx.$activeRoute.route === ctx.route) && create_if_block$3(ctx);
+    	let if_block_anchor;
+    	let current;
+    	let if_block = /*$activeRoute*/ ctx[3] !== null && /*$activeRoute*/ ctx[3].route === /*route*/ ctx[7] && create_if_block$3(ctx);
 
     	return {
     		c() {
     			if (if_block) if_block.c();
     			if_block_anchor = empty();
     		},
-
     		m(target, anchor) {
     			if (if_block) if_block.m(target, anchor);
     			insert(target, if_block_anchor, anchor);
     			current = true;
     		},
-
-    		p(changed, ctx) {
-    			if (ctx.$activeRoute !== null && ctx.$activeRoute.route === ctx.route) {
+    		p(ctx, [dirty]) {
+    			if (/*$activeRoute*/ ctx[3] !== null && /*$activeRoute*/ ctx[3].route === /*route*/ ctx[7]) {
     				if (if_block) {
-    					if_block.p(changed, ctx);
+    					if_block.p(ctx, dirty);
     					transition_in(if_block, 1);
     				} else {
     					if_block = create_if_block$3(ctx);
@@ -13864,138 +13693,127 @@ var app = (function () {
     				}
     			} else if (if_block) {
     				group_outros();
+
     				transition_out(if_block, 1, 1, () => {
     					if_block = null;
     				});
+
     				check_outros();
     			}
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(if_block);
     			current = true;
     		},
-
     		o(local) {
     			transition_out(if_block);
     			current = false;
     		},
-
     		d(detaching) {
     			if (if_block) if_block.d(detaching);
-
-    			if (detaching) {
-    				detach(if_block_anchor);
-    			}
+    			if (detaching) detach(if_block_anchor);
     		}
     	};
     }
 
     function instance$7($$self, $$props, $$invalidate) {
-    	let $activeRoute, $location;
+    	let $activeRoute;
+    	let $location;
+    	let { path = "" } = $$props;
+    	let { component = null } = $$props;
+    	const { registerRoute, unregisterRoute, activeRoute } = getContext(ROUTER);
+    	component_subscribe($$self, activeRoute, value => $$invalidate(3, $activeRoute = value));
+    	const location = getContext(LOCATION);
+    	component_subscribe($$self, location, value => $$invalidate(4, $location = value));
+    	const route = { path, default: path === "" };
+    	let routeParams = {};
+    	let routeProps = {};
+    	registerRoute(route);
 
-    	
-
-      let { path = "", component = null } = $$props;
-
-      const { registerRoute, unregisterRoute, activeRoute } = getContext(ROUTER); component_subscribe($$self, activeRoute, $$value => { $activeRoute = $$value; $$invalidate('$activeRoute', $activeRoute); });
-      const location = getContext(LOCATION); component_subscribe($$self, location, $$value => { $location = $$value; $$invalidate('$location', $location); });
-
-      const route = {
-        path,
-        // If no path prop is given, this Route will act as the default Route
-        // that is rendered if no other Route in the Router is a match.
-        default: path === ""
-      };
-      let routeParams = {};
-      let routeProps = {};
-
-      registerRoute(route);
-
-      // There is no need to unregister Routes in SSR since it will all be
-      // thrown away anyway.
-      if (typeof window !== "undefined") {
-        onDestroy(() => {
-          unregisterRoute(route);
-        });
-      }
+    	if (typeof window !== "undefined") {
+    		onDestroy(() => {
+    			unregisterRoute(route);
+    		});
+    	}
 
     	let { $$slots = {}, $$scope } = $$props;
 
     	$$self.$set = $$new_props => {
-    		$$invalidate('$$props', $$props = assign(assign({}, $$props), $$new_props));
-    		if ('path' in $$new_props) $$invalidate('path', path = $$new_props.path);
-    		if ('component' in $$new_props) $$invalidate('component', component = $$new_props.component);
-    		if ('$$scope' in $$new_props) $$invalidate('$$scope', $$scope = $$new_props.$$scope);
+    		$$invalidate(11, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+    		if ("path" in $$new_props) $$invalidate(8, path = $$new_props.path);
+    		if ("component" in $$new_props) $$invalidate(0, component = $$new_props.component);
+    		if ("$$scope" in $$new_props) $$invalidate(12, $$scope = $$new_props.$$scope);
     	};
 
-    	$$self.$$.update = ($$dirty = { $activeRoute: 1, $$props: 1 }) => {
-    		if ($$dirty.$activeRoute) { if ($activeRoute && $activeRoute.route === route) {
-            $$invalidate('routeParams', routeParams = $activeRoute.params);
-          } }
-    		{
-            const { path, component, ...rest } = $$props;
-            $$invalidate('routeProps', routeProps = rest);
-          }
+    	$$self.$$.update = () => {
+    		if ($$self.$$.dirty & /*$activeRoute*/ 8) {
+    			$: if ($activeRoute && $activeRoute.route === route) {
+    				$$invalidate(1, routeParams = $activeRoute.params);
+    			}
+    		}
+
+    		$: {
+    			const { path, component, ...rest } = $$props;
+    			$$invalidate(2, routeProps = rest);
+    		}
     	};
 
-    	return {
-    		path,
+    	$$props = exclude_internal_props($$props);
+
+    	return [
     		component,
-    		activeRoute,
-    		location,
-    		route,
     		routeParams,
     		routeProps,
     		$activeRoute,
     		$location,
-    		$$props: $$props = exclude_internal_props($$props),
-    		$$slots,
-    		$$scope
-    	};
+    		activeRoute,
+    		location,
+    		route,
+    		path,
+    		registerRoute,
+    		unregisterRoute,
+    		$$props,
+    		$$scope,
+    		$$slots
+    	];
     }
 
     class Route extends SvelteComponent {
     	constructor(options) {
     		super();
-    		init(this, options, instance$7, create_fragment$8, safe_not_equal, ["path", "component"]);
+    		init(this, options, instance$7, create_fragment$8, safe_not_equal, { path: 8, component: 0 });
     	}
     }
 
-    /* node_modules/svelte-routing/src/Link.svelte generated by Svelte v3.10.0 */
+    /* node_modules/svelte-routing/src/Link.svelte generated by Svelte v3.16.5 */
 
     function create_fragment$9(ctx) {
-    	var a, current, dispose;
+    	let a;
+    	let current;
+    	let dispose;
+    	const default_slot_template = /*$$slots*/ ctx[16].default;
+    	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[15], null);
 
-    	const default_slot_template = ctx.$$slots.default;
-    	const default_slot = create_slot(default_slot_template, ctx, null);
-
-    	var a_levels = [
-    		{ href: ctx.href },
-    		{ "aria-current": ctx.ariaCurrent },
-    		ctx.props
+    	let a_levels = [
+    		{ href: /*href*/ ctx[0] },
+    		{ "aria-current": /*ariaCurrent*/ ctx[2] },
+    		/*props*/ ctx[1]
     	];
 
-    	var a_data = {};
-    	for (var i = 0; i < a_levels.length; i += 1) {
+    	let a_data = {};
+
+    	for (let i = 0; i < a_levels.length; i += 1) {
     		a_data = assign(a_data, a_levels[i]);
     	}
 
     	return {
     		c() {
     			a = element("a");
-
     			if (default_slot) default_slot.c();
-
     			set_attributes(a, a_data);
-    			dispose = listen(a, "click", ctx.onClick);
+    			dispose = listen(a, "click", /*onClick*/ ctx[5]);
     		},
-
-    		l(nodes) {
-    			if (default_slot) default_slot.l(a_nodes);
-    		},
-
     		m(target, anchor) {
     			insert(target, a, anchor);
 
@@ -14005,38 +13823,28 @@ var app = (function () {
 
     			current = true;
     		},
-
-    		p(changed, ctx) {
-    			if (default_slot && default_slot.p && changed.$$scope) {
-    				default_slot.p(
-    					get_slot_changes(default_slot_template, ctx, changed, null),
-    					get_slot_context(default_slot_template, ctx, null)
-    				);
+    		p(ctx, [dirty]) {
+    			if (default_slot && default_slot.p && dirty & /*$$scope*/ 32768) {
+    				default_slot.p(get_slot_context(default_slot_template, ctx, /*$$scope*/ ctx[15], null), get_slot_changes(default_slot_template, /*$$scope*/ ctx[15], dirty, null));
     			}
 
     			set_attributes(a, get_spread_update(a_levels, [
-    				(changed.href) && { href: ctx.href },
-    				(changed.ariaCurrent) && { "aria-current": ctx.ariaCurrent },
-    				(changed.props) && ctx.props
+    				dirty & /*href*/ 1 && ({ href: /*href*/ ctx[0] }),
+    				dirty & /*ariaCurrent*/ 4 && ({ "aria-current": /*ariaCurrent*/ ctx[2] }),
+    				dirty & /*props*/ 2 && /*props*/ ctx[1]
     			]));
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(default_slot, local);
     			current = true;
     		},
-
     		o(local) {
     			transition_out(default_slot, local);
     			current = false;
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(a);
-    			}
-
+    			if (detaching) detach(a);
     			if (default_slot) default_slot.d(detaching);
     			dispose();
     		}
@@ -14044,308 +13852,329 @@ var app = (function () {
     }
 
     function instance$8($$self, $$props, $$invalidate) {
-    	let $base, $location;
+    	let $base;
+    	let $location;
+    	let { to = "#" } = $$props;
+    	let { replace = false } = $$props;
+    	let { state = {} } = $$props;
+    	let { getProps = () => ({}) } = $$props;
+    	const { base } = getContext(ROUTER);
+    	component_subscribe($$self, base, value => $$invalidate(12, $base = value));
+    	const location = getContext(LOCATION);
+    	component_subscribe($$self, location, value => $$invalidate(13, $location = value));
+    	const dispatch = createEventDispatcher();
+    	let href, isPartiallyCurrent, isCurrent, props;
 
-    	
+    	function onClick(event) {
+    		dispatch("click", event);
 
-      let { to = "#", replace = false, state = {}, getProps = () => ({}) } = $$props;
-
-      const { base } = getContext(ROUTER); component_subscribe($$self, base, $$value => { $base = $$value; $$invalidate('$base', $base); });
-      const location = getContext(LOCATION); component_subscribe($$self, location, $$value => { $location = $$value; $$invalidate('$location', $location); });
-      const dispatch = createEventDispatcher();
-
-      let href, isPartiallyCurrent, isCurrent, props;
-
-      function onClick(event) {
-        dispatch("click", event);
-
-        if (shouldNavigate(event)) {
-          event.preventDefault();
-          // Don't push another entry to the history stack when the user
-          // clicks on a Link to the page they are currently on.
-          const shouldReplace = $location.pathname === href || replace;
-          navigate(href, { state, replace: shouldReplace });
-        }
-      }
+    		if (shouldNavigate(event)) {
+    			event.preventDefault();
+    			const shouldReplace = $location.pathname === href || replace;
+    			navigate(href, { state, replace: shouldReplace });
+    		}
+    	}
 
     	let { $$slots = {}, $$scope } = $$props;
 
     	$$self.$set = $$props => {
-    		if ('to' in $$props) $$invalidate('to', to = $$props.to);
-    		if ('replace' in $$props) $$invalidate('replace', replace = $$props.replace);
-    		if ('state' in $$props) $$invalidate('state', state = $$props.state);
-    		if ('getProps' in $$props) $$invalidate('getProps', getProps = $$props.getProps);
-    		if ('$$scope' in $$props) $$invalidate('$$scope', $$scope = $$props.$$scope);
+    		if ("to" in $$props) $$invalidate(6, to = $$props.to);
+    		if ("replace" in $$props) $$invalidate(7, replace = $$props.replace);
+    		if ("state" in $$props) $$invalidate(8, state = $$props.state);
+    		if ("getProps" in $$props) $$invalidate(9, getProps = $$props.getProps);
+    		if ("$$scope" in $$props) $$invalidate(15, $$scope = $$props.$$scope);
     	};
 
     	let ariaCurrent;
 
-    	$$self.$$.update = ($$dirty = { to: 1, $base: 1, $location: 1, href: 1, isCurrent: 1, getProps: 1, isPartiallyCurrent: 1 }) => {
-    		if ($$dirty.to || $$dirty.$base) { $$invalidate('href', href = to === "/" ? $base.uri : resolve(to, $base.uri)); }
-    		if ($$dirty.$location || $$dirty.href) { $$invalidate('isPartiallyCurrent', isPartiallyCurrent = startsWith($location.pathname, href)); }
-    		if ($$dirty.href || $$dirty.$location) { $$invalidate('isCurrent', isCurrent = href === $location.pathname); }
-    		if ($$dirty.isCurrent) { $$invalidate('ariaCurrent', ariaCurrent = isCurrent ? "page" : undefined); }
-    		if ($$dirty.getProps || $$dirty.$location || $$dirty.href || $$dirty.isPartiallyCurrent || $$dirty.isCurrent) { $$invalidate('props', props = getProps({
-            location: $location,
-            href,
-            isPartiallyCurrent,
-            isCurrent
-          })); }
+    	$$self.$$.update = () => {
+    		if ($$self.$$.dirty & /*to, $base*/ 4160) {
+    			$: $$invalidate(0, href = to === "/" ? $base.uri : resolve(to, $base.uri));
+    		}
+
+    		if ($$self.$$.dirty & /*$location, href*/ 8193) {
+    			$: $$invalidate(10, isPartiallyCurrent = startsWith($location.pathname, href));
+    		}
+
+    		if ($$self.$$.dirty & /*href, $location*/ 8193) {
+    			$: $$invalidate(11, isCurrent = href === $location.pathname);
+    		}
+
+    		if ($$self.$$.dirty & /*isCurrent*/ 2048) {
+    			$: $$invalidate(2, ariaCurrent = isCurrent ? "page" : undefined);
+    		}
+
+    		if ($$self.$$.dirty & /*getProps, $location, href, isPartiallyCurrent, isCurrent*/ 11777) {
+    			$: $$invalidate(1, props = getProps({
+    				location: $location,
+    				href,
+    				isPartiallyCurrent,
+    				isCurrent
+    			}));
+    		}
     	};
 
-    	return {
+    	return [
+    		href,
+    		props,
+    		ariaCurrent,
+    		base,
+    		location,
+    		onClick,
     		to,
     		replace,
     		state,
     		getProps,
-    		base,
-    		location,
-    		href,
-    		props,
-    		onClick,
-    		ariaCurrent,
-    		$$slots,
-    		$$scope
-    	};
+    		isPartiallyCurrent,
+    		isCurrent,
+    		$base,
+    		$location,
+    		dispatch,
+    		$$scope,
+    		$$slots
+    	];
     }
 
     class Link extends SvelteComponent {
     	constructor(options) {
     		super();
-    		init(this, options, instance$8, create_fragment$9, safe_not_equal, ["to", "replace", "state", "getProps"]);
+    		init(this, options, instance$8, create_fragment$9, safe_not_equal, { to: 6, replace: 7, state: 8, getProps: 9 });
     	}
     }
 
-    /* docs-src/index.svelte generated by Svelte v3.10.0 */
+    /* docs-src/index.svelte generated by Svelte v3.16.5 */
 
     function add_css$2() {
     	var style = element("style");
-    	style.id = 'svelte-w8gqor-style';
+    	style.id = "svelte-w8gqor-style";
     	style.textContent = ".layout.svelte-w8gqor{display:flex;position:relative;height:100vh;overflow:scroll}.aside.svelte-w8gqor{background:var(--secondary);position:sticky;top:0;bottom:0;left:0;padding:40px 40px 50px;flex:0 0 360px;color:#fff}.version.svelte-w8gqor{margin:30px 0 0;padding:12px}@media(max-width: 768px){.layout.svelte-w8gqor{flex-direction:column}.aside.svelte-w8gqor{width:100%;position:relative}}nav.svelte-w8gqor{display:flex;flex-direction:column}.wrapper.svelte-w8gqor{flex:1;width:100%}.container.svelte-w8gqor{max-width:900px;padding:40px;min-height:calc(100vh - 100px)}.logo.svelte-w8gqor{max-width:100px}footer.svelte-w8gqor{width:100%;background:var(--secondary);padding:20px;height:100px;color:#fff;display:flex;align-items:center;justify-content:flex-end}.avatar.svelte-w8gqor{width:48px;height:48px}.badge.svelte-w8gqor{padding:6px 10px;text-transform:uppercase;color:var(--secondary);font-weight:bold;margin-left:8px;font-size:11px;letter-spacing:1.2px;border-radius:50px;background:var(--primary-dark)}.nav-section.svelte-w8gqor{font-size:18px;margin-top:40px;margin-bottom:12px;font-weight:normal}.github.svelte-w8gqor{position:fixed;top:0;right:0;padding:0;z-index:1}.github.svelte-w8gqor img.svelte-w8gqor{width:100px;height:100px}";
     	append(document.head, style);
     }
 
     // (121:8) <Link to="/introduction">
     function create_default_slot_6(ctx) {
-    	var t;
+    	let t;
 
     	return {
     		c() {
     			t = text("Introduction");
     		},
-
     		m(target, anchor) {
     			insert(target, t, anchor);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(t);
-    			}
+    			if (detaching) detach(t);
     		}
     	};
     }
 
     // (123:8) <Link to="/basic">
     function create_default_slot_5(ctx) {
-    	var t;
+    	let t;
 
     	return {
     		c() {
     			t = text("Basic");
     		},
-
     		m(target, anchor) {
     			insert(target, t, anchor);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(t);
-    			}
+    			if (detaching) detach(t);
     		}
     	};
     }
 
     // (124:8) <Link to="/yup">
     function create_default_slot_4(ctx) {
-    	var t;
+    	let t;
 
     	return {
     		c() {
     			t = text("Yup validation");
     		},
-
     		m(target, anchor) {
     			insert(target, t, anchor);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(t);
-    			}
+    			if (detaching) detach(t);
     		}
     	};
     }
 
     // (125:8) <Link to="/custom">
     function create_default_slot_3(ctx) {
-    	var t;
+    	let t;
 
     	return {
     		c() {
     			t = text("Custom validation");
     		},
-
     		m(target, anchor) {
     			insert(target, t, anchor);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(t);
-    			}
+    			if (detaching) detach(t);
     		}
     	};
     }
 
     // (126:8) <Link to="/array">
     function create_default_slot_2(ctx) {
-    	var t;
+    	let t;
 
     	return {
     		c() {
     			t = text("Forms array");
     		},
-
     		m(target, anchor) {
     			insert(target, t, anchor);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(t);
-    			}
+    			if (detaching) detach(t);
     		}
     	};
     }
 
     // (127:8) <Link to="/helpers">
     function create_default_slot_1(ctx) {
-    	var t, span;
+    	let t0;
+    	let span;
 
     	return {
     		c() {
-    			t = text("Helper components\n          ");
+    			t0 = text("Helper components\n          ");
     			span = element("span");
     			span.textContent = "new";
     			attr(span, "class", "badge svelte-w8gqor");
     		},
-
     		m(target, anchor) {
-    			insert(target, t, anchor);
+    			insert(target, t0, anchor);
     			insert(target, span, anchor);
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(t);
-    				detach(span);
-    			}
+    			if (detaching) detach(t0);
+    			if (detaching) detach(span);
     		}
     	};
     }
 
     // (114:0) <Router>
     function create_default_slot$1(ctx) {
-    	var div1, aside, img, t0, p, t2, nav, h40, t4, t5, h41, t7, t8, t9, t10, t11, t12, main, a, t13, div0, t14, t15, t16, t17, t18, t19, footer, current;
+    	let div1;
+    	let aside;
+    	let img0;
+    	let img0_src_value;
+    	let t0;
+    	let p;
+    	let t2;
+    	let nav;
+    	let h40;
+    	let t4;
+    	let t5;
+    	let h41;
+    	let t7;
+    	let t8;
+    	let t9;
+    	let t10;
+    	let t11;
+    	let t12;
+    	let main;
+    	let a0;
+    	let t13;
+    	let div0;
+    	let t14;
+    	let t15;
+    	let t16;
+    	let t17;
+    	let t18;
+    	let t19;
+    	let footer;
+    	let current;
 
-    	var link0 = new Link({
-    		props: {
-    		to: "/introduction",
-    		$$slots: { default: [create_default_slot_6] },
-    		$$scope: { ctx }
-    	}
-    	});
+    	const link0 = new Link({
+    			props: {
+    				to: "/introduction",
+    				$$slots: { default: [create_default_slot_6] },
+    				$$scope: { ctx }
+    			}
+    		});
 
-    	var link1 = new Link({
-    		props: {
-    		to: "/basic",
-    		$$slots: { default: [create_default_slot_5] },
-    		$$scope: { ctx }
-    	}
-    	});
+    	const link1 = new Link({
+    			props: {
+    				to: "/basic",
+    				$$slots: { default: [create_default_slot_5] },
+    				$$scope: { ctx }
+    			}
+    		});
 
-    	var link2 = new Link({
-    		props: {
-    		to: "/yup",
-    		$$slots: { default: [create_default_slot_4] },
-    		$$scope: { ctx }
-    	}
-    	});
+    	const link2 = new Link({
+    			props: {
+    				to: "/yup",
+    				$$slots: { default: [create_default_slot_4] },
+    				$$scope: { ctx }
+    			}
+    		});
 
-    	var link3 = new Link({
-    		props: {
-    		to: "/custom",
-    		$$slots: { default: [create_default_slot_3] },
-    		$$scope: { ctx }
-    	}
-    	});
+    	const link3 = new Link({
+    			props: {
+    				to: "/custom",
+    				$$slots: { default: [create_default_slot_3] },
+    				$$scope: { ctx }
+    			}
+    		});
 
-    	var link4 = new Link({
-    		props: {
-    		to: "/array",
-    		$$slots: { default: [create_default_slot_2] },
-    		$$scope: { ctx }
-    	}
-    	});
+    	const link4 = new Link({
+    			props: {
+    				to: "/array",
+    				$$slots: { default: [create_default_slot_2] },
+    				$$scope: { ctx }
+    			}
+    		});
 
-    	var link5 = new Link({
-    		props: {
-    		to: "/helpers",
-    		$$slots: { default: [create_default_slot_1] },
-    		$$scope: { ctx }
-    	}
-    	});
+    	const link5 = new Link({
+    			props: {
+    				to: "/helpers",
+    				$$slots: { default: [create_default_slot_1] },
+    				$$scope: { ctx }
+    			}
+    		});
 
-    	var route0 = new Route({
-    		props: {
-    		path: "/introduction",
-    		component: Introduction
-    	}
-    	});
+    	const route0 = new Route({
+    			props: {
+    				path: "/introduction",
+    				component: Introduction
+    			}
+    		});
 
-    	var route1 = new Route({
-    		props: { path: "/basic", component: Component }
-    	});
+    	const route1 = new Route({
+    			props: { path: "/basic", component: Component }
+    		});
 
-    	var route2 = new Route({
-    		props: { path: "/yup", component: Component$1 }
-    	});
+    	const route2 = new Route({
+    			props: { path: "/yup", component: Component$1 }
+    		});
 
-    	var route3 = new Route({
-    		props: { path: "/array", component: Component$3 }
-    	});
+    	const route3 = new Route({
+    			props: { path: "/array", component: Component$3 }
+    		});
 
-    	var route4 = new Route({
-    		props: {
-    		path: "/custom",
-    		component: Component$2
-    	}
-    	});
+    	const route4 = new Route({
+    			props: {
+    				path: "/custom",
+    				component: Component$2
+    			}
+    		});
 
-    	var route5 = new Route({
-    		props: {
-    		path: "/helpers",
-    		component: Component$4
-    	}
-    	});
+    	const route5 = new Route({
+    			props: { path: "/helpers", component: Component$4 }
+    		});
 
     	return {
     		c() {
     			div1 = element("div");
     			aside = element("aside");
-    			img = element("img");
+    			img0 = element("img");
     			t0 = space();
     			p = element("p");
     			p.textContent = "V1.0.0";
@@ -14354,63 +14183,64 @@ var app = (function () {
     			h40 = element("h4");
     			h40.textContent = "Getting started";
     			t4 = space();
-    			link0.$$.fragment.c();
+    			create_component(link0.$$.fragment);
     			t5 = space();
     			h41 = element("h4");
     			h41.textContent = "Examples";
     			t7 = space();
-    			link1.$$.fragment.c();
+    			create_component(link1.$$.fragment);
     			t8 = space();
-    			link2.$$.fragment.c();
+    			create_component(link2.$$.fragment);
     			t9 = space();
-    			link3.$$.fragment.c();
+    			create_component(link3.$$.fragment);
     			t10 = space();
-    			link4.$$.fragment.c();
+    			create_component(link4.$$.fragment);
     			t11 = space();
-    			link5.$$.fragment.c();
+    			create_component(link5.$$.fragment);
     			t12 = space();
     			main = element("main");
-    			a = element("a");
-    			a.innerHTML = `<img src="./github.png" alt="github repository for svelte forms lib" class="svelte-w8gqor">`;
+    			a0 = element("a");
+    			a0.innerHTML = `<img src="./github.png" alt="github repository for svelte forms lib" class="svelte-w8gqor">`;
     			t13 = space();
     			div0 = element("div");
-    			route0.$$.fragment.c();
+    			create_component(route0.$$.fragment);
     			t14 = space();
-    			route1.$$.fragment.c();
+    			create_component(route1.$$.fragment);
     			t15 = space();
-    			route2.$$.fragment.c();
+    			create_component(route2.$$.fragment);
     			t16 = space();
-    			route3.$$.fragment.c();
+    			create_component(route3.$$.fragment);
     			t17 = space();
-    			route4.$$.fragment.c();
+    			create_component(route4.$$.fragment);
     			t18 = space();
-    			route5.$$.fragment.c();
+    			create_component(route5.$$.fragment);
     			t19 = space();
     			footer = element("footer");
+
     			footer.innerHTML = `
-			        Open source project by
-			        <a href="https://www.tjinauyeung.com" target="_blank"><img class="avatar svelte-w8gqor" src="https://tjinauyeung.com/static/avatar-b2c241e7fd2f877f0c3948067254afc3.png" alt="avatar of Tjin Au Yeung"></a>`;
-    			attr(img, "alt", "logo of svelte forms lib");
-    			attr(img, "class", "logo svelte-w8gqor");
-    			attr(img, "src", "./logo.png");
+        Open source project by
+        <a href="https://www.tjinauyeung.com" target="_blank"><img class="avatar svelte-w8gqor" src="https://tjinauyeung.com/static/avatar-b2c241e7fd2f877f0c3948067254afc3.png" alt="avatar of Tjin Au Yeung"></a>`;
+
+    			attr(img0, "alt", "logo of svelte forms lib");
+    			attr(img0, "class", "logo svelte-w8gqor");
+    			if (img0.src !== (img0_src_value = "./logo.png")) attr(img0, "src", img0_src_value);
     			attr(p, "class", "version svelte-w8gqor");
     			attr(h40, "class", "nav-section svelte-w8gqor");
     			attr(h41, "class", "nav-section svelte-w8gqor");
     			attr(nav, "class", "svelte-w8gqor");
     			attr(aside, "class", "aside svelte-w8gqor");
-    			attr(a, "class", "github svelte-w8gqor");
-    			attr(a, "href", "https://github.com/tjinauyeung/svelte-forms-lib");
-    			attr(a, "target", "_blank");
+    			attr(a0, "class", "github svelte-w8gqor");
+    			attr(a0, "href", "https://github.com/tjinauyeung/svelte-forms-lib");
+    			attr(a0, "target", "_blank");
     			attr(div0, "class", "container svelte-w8gqor");
     			attr(footer, "class", "svelte-w8gqor");
     			attr(main, "class", "wrapper svelte-w8gqor");
     			attr(div1, "class", "layout svelte-w8gqor");
     		},
-
     		m(target, anchor) {
     			insert(target, div1, anchor);
     			append(div1, aside);
-    			append(aside, img);
+    			append(aside, img0);
     			append(aside, t0);
     			append(aside, p);
     			append(aside, t2);
@@ -14432,7 +14262,7 @@ var app = (function () {
     			mount_component(link5, nav, null);
     			append(div1, t12);
     			append(div1, main);
-    			append(main, a);
+    			append(main, a0);
     			append(main, t13);
     			append(main, div0);
     			mount_component(route0, div0, null);
@@ -14450,86 +14280,66 @@ var app = (function () {
     			append(main, footer);
     			current = true;
     		},
+    		p(ctx, dirty) {
+    			const link0_changes = {};
 
-    		p(changed, ctx) {
-    			var link0_changes = {};
-    			if (changed.$$scope) link0_changes.$$scope = { changed, ctx };
+    			if (dirty & /*$$scope*/ 1) {
+    				link0_changes.$$scope = { dirty, ctx };
+    			}
+
     			link0.$set(link0_changes);
+    			const link1_changes = {};
 
-    			var link1_changes = {};
-    			if (changed.$$scope) link1_changes.$$scope = { changed, ctx };
+    			if (dirty & /*$$scope*/ 1) {
+    				link1_changes.$$scope = { dirty, ctx };
+    			}
+
     			link1.$set(link1_changes);
+    			const link2_changes = {};
 
-    			var link2_changes = {};
-    			if (changed.$$scope) link2_changes.$$scope = { changed, ctx };
+    			if (dirty & /*$$scope*/ 1) {
+    				link2_changes.$$scope = { dirty, ctx };
+    			}
+
     			link2.$set(link2_changes);
+    			const link3_changes = {};
 
-    			var link3_changes = {};
-    			if (changed.$$scope) link3_changes.$$scope = { changed, ctx };
+    			if (dirty & /*$$scope*/ 1) {
+    				link3_changes.$$scope = { dirty, ctx };
+    			}
+
     			link3.$set(link3_changes);
+    			const link4_changes = {};
 
-    			var link4_changes = {};
-    			if (changed.$$scope) link4_changes.$$scope = { changed, ctx };
+    			if (dirty & /*$$scope*/ 1) {
+    				link4_changes.$$scope = { dirty, ctx };
+    			}
+
     			link4.$set(link4_changes);
+    			const link5_changes = {};
 
-    			var link5_changes = {};
-    			if (changed.$$scope) link5_changes.$$scope = { changed, ctx };
+    			if (dirty & /*$$scope*/ 1) {
+    				link5_changes.$$scope = { dirty, ctx };
+    			}
+
     			link5.$set(link5_changes);
-
-    			var route0_changes = {};
-    			if (changed.Introduction) route0_changes.component = Introduction;
-    			route0.$set(route0_changes);
-
-    			var route1_changes = {};
-    			if (changed.Basic) route1_changes.component = Component;
-    			route1.$set(route1_changes);
-
-    			var route2_changes = {};
-    			if (changed.YupValidation) route2_changes.component = Component$1;
-    			route2.$set(route2_changes);
-
-    			var route3_changes = {};
-    			if (changed.FormArray) route3_changes.component = Component$3;
-    			route3.$set(route3_changes);
-
-    			var route4_changes = {};
-    			if (changed.CustomValidation) route4_changes.component = Component$2;
-    			route4.$set(route4_changes);
-
-    			var route5_changes = {};
-    			if (changed.Helpers) route5_changes.component = Component$4;
-    			route5.$set(route5_changes);
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(link0.$$.fragment, local);
-
     			transition_in(link1.$$.fragment, local);
-
     			transition_in(link2.$$.fragment, local);
-
     			transition_in(link3.$$.fragment, local);
-
     			transition_in(link4.$$.fragment, local);
-
     			transition_in(link5.$$.fragment, local);
-
     			transition_in(route0.$$.fragment, local);
-
     			transition_in(route1.$$.fragment, local);
-
     			transition_in(route2.$$.fragment, local);
-
     			transition_in(route3.$$.fragment, local);
-
     			transition_in(route4.$$.fragment, local);
-
     			transition_in(route5.$$.fragment, local);
-
     			current = true;
     		},
-
     		o(local) {
     			transition_out(link0.$$.fragment, local);
     			transition_out(link1.$$.fragment, local);
@@ -14545,77 +14355,60 @@ var app = (function () {
     			transition_out(route5.$$.fragment, local);
     			current = false;
     		},
-
     		d(detaching) {
-    			if (detaching) {
-    				detach(div1);
-    			}
-
+    			if (detaching) detach(div1);
     			destroy_component(link0);
-
     			destroy_component(link1);
-
     			destroy_component(link2);
-
     			destroy_component(link3);
-
     			destroy_component(link4);
-
     			destroy_component(link5);
-
     			destroy_component(route0);
-
     			destroy_component(route1);
-
     			destroy_component(route2);
-
     			destroy_component(route3);
-
     			destroy_component(route4);
-
     			destroy_component(route5);
     		}
     	};
     }
 
     function create_fragment$a(ctx) {
-    	var current;
+    	let current;
 
-    	var router = new Router({
-    		props: {
-    		$$slots: { default: [create_default_slot$1] },
-    		$$scope: { ctx }
-    	}
-    	});
+    	const router = new Router({
+    			props: {
+    				$$slots: { default: [create_default_slot$1] },
+    				$$scope: { ctx }
+    			}
+    		});
 
     	return {
     		c() {
-    			router.$$.fragment.c();
+    			create_component(router.$$.fragment);
     		},
-
     		m(target, anchor) {
     			mount_component(router, target, anchor);
     			current = true;
     		},
+    		p(ctx, [dirty]) {
+    			const router_changes = {};
 
-    		p(changed, ctx) {
-    			var router_changes = {};
-    			if (changed.$$scope) router_changes.$$scope = { changed, ctx };
+    			if (dirty & /*$$scope*/ 1) {
+    				router_changes.$$scope = { dirty, ctx };
+    			}
+
     			router.$set(router_changes);
     		},
-
     		i(local) {
     			if (current) return;
     			transition_in(router.$$.fragment, local);
-
     			current = true;
     		},
-
     		o(local) {
     			transition_out(router.$$.fragment, local);
     			current = false;
     		},
-
     		d(detaching) {
     			destroy_component(router, detaching);
     		}
@@ -14626,7 +14419,7 @@ var app = (function () {
     	constructor(options) {
     		super();
     		if (!document.getElementById("svelte-w8gqor-style")) add_css$2();
-    		init(this, options, null, create_fragment$a, safe_not_equal, []);
+    		init(this, options, null, create_fragment$a, safe_not_equal, {});
     	}
     }
 
