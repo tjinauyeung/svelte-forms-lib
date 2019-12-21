@@ -1,6 +1,6 @@
 {
   "name": "svelte-forms-lib",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Svelte forms lib - A lightweight library for managing forms in Svelte v3",
   "scripts": {
     "start": "rollup -c rollup.config.js",
@@ -13,7 +13,10 @@
     "format": "prettier --write lib/**/*.{js,css}",
     "serve:docs": "sirv docs --single --dev"
   },
-  "files": ["build/*", "lib/*"],
+  "files": [
+    "build/*",
+    "lib/*"
+  ],
   "author": "Tjin Au Yeung",
   "browserslist": [
     "last 1 chrome versions"
