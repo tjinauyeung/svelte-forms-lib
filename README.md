@@ -1,6 +1,6 @@
 
 <p>
-  <img src="./logo.png" width="100px" height="100px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
+  <img src="https://svelte-forms-lib-sapper-docs.tjin.now.sh/logo.png" width="80px" height="80px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
 </p>
 
 <a href="https://www.npmjs.com/package/svelte-forms-lib">
@@ -20,15 +20,9 @@
 
 Svelte forms lib is a lightweight library for managing forms in Svelte, with an <a href="https://github.com/jaredpalmer/formik" target="_blank">Formik</a> like API.
 
-## Examples
+## Documentation
 
-For examples see the [examples](https://github.com/tjinauyeung/svelte-forms-lib/tree/master/examples) folder in or run
-
-```bash
-npm run start:examples
-```
-
-open up in the browser to see the examples.
+Go to the newly released <a href="https://svelte-forms-lib-sapper-docs.tjin.now.sh/introduction" target="_blank">documentation website</a> to understand the API and see examples.
 
 ## Installation
 
