@@ -3,9 +3,9 @@
   import { createForm } from "../createForm";
   import { key } from "./key";
 
-  export let initialValues;
-  export let validate;
-  export let validationSchema;
+  export let initialValues = {};
+  export let validate = null;
+  export let validationSchema = null;
   export let onSubmit;
 
   const {

@@ -3,15 +3,15 @@
   import { key } from "./key";
 
   export let name;
-  export let type = "text";
 
   const { form, handleChange } = getContext(key);
 </script>
 
-<input
+<select
   {name}
-  type={type}
   value={$form[name]}
   on:change={handleChange}
   on:blur={handleChange}
-  {...$$props} />
+  {...$$props}>
+  <slot />
+</select>
