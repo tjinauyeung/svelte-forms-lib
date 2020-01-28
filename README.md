@@ -1,20 +1,17 @@
 
 <p>
-  <img src="https://svelte-forms-lib-sapper-docs.now.sh/logo.png" width="80px" height="80px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
+  <img src="https://svelte-forms-lib-sapper-docs.now.sh/logo.png" width="100px" height="100px" title="Svelte forms lib logo" alt="Svelte forms lib logo" />
 </p>
 
 <a href="https://www.npmjs.com/package/svelte-forms-lib">
   <img src="https://img.shields.io/npm/v/svelte-forms-lib.svg" alt="npm version">
 </a>
-<br/>
 <a href="https://www.npmjs.com/package/svelte-forms-lib">
   <img src="https://img.shields.io/npm/dm/svelte-forms-lib.svg" alt="npm downloads">
 </a>
-<br/>
 <a href="https://bundlephobia.com/result?p=svelte-forms-lib">
   <img src="https://img.shields.io/bundlephobia/min/svelte-forms-lib.svg" alt="minified size">
 </a>
-<br/>
 <a href="https://opensource.org/licenses/MIT">
   <img src="https://img.shields.io/npm/l/svelte-forms-lib.svg" alt="license">
 </a>
