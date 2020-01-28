@@ -109,7 +109,9 @@ describe("createForm", () => {
         email: "",
         country: ""
       });
-      subscribeOnce(instance.isValid).then(isValid => expect(isValid).toBe(false));
+      subscribeOnce(instance.isValid).then(isValid =>
+        expect(isValid).toBe(false)
+      );
     });
 
     it("returns false if some fields are untouched", async () => {
@@ -127,39 +129,55 @@ describe("createForm", () => {
         email: true,
         country: true
       });
-      subscribeOnce(instance.isValid).then(isValid => expect(isValid).toBe(true));
+      subscribeOnce(instance.isValid).then(isValid =>
+        expect(isValid).toBe(true)
+      );
     });
   });
 
   describe("handleReset", () => {
     it("resets form to initial state", () => {
       instance.form.set({ name: "foo" });
-      subscribeOnce(instance.form).then(values => expect(values.name).toBe("foo"));
+      subscribeOnce(instance.form).then(values =>
+        expect(values.name).toBe("foo")
+      );
 
       instance.handleReset();
-      subscribeOnce(instance.form).then(form => expect(form.name).toBe(form.name));
+      subscribeOnce(instance.form).then(form =>
+        expect(form.name).toBe(form.name)
+      );
     });
 
     it("resets errors to initial state", () => {
       instance.errors.set({ name: "name is required" });
-      subscribeOnce(instance.errors).then(errors => expect(errors.name).toBe("name is required"));
+      subscribeOnce(instance.errors).then(errors =>
+        expect(errors.name).toBe("name is required")
+      );
 
       instance.handleReset();
-      subscribeOnce(instance.errors).then(errors => expect(errors.name).toBe(""));
+      subscribeOnce(instance.errors).then(errors =>
+        expect(errors.name).toBe("")
+      );
     });
 
     it("resets touched to initial state", () => {
       instance.touched.set({ name: true });
-      subscribeOnce(instance.touched).then(touched => expect(touched.name).toBe(true));
+      subscribeOnce(instance.touched).then(touched =>
+        expect(touched.name).toBe(true)
+      );
 
       instance.handleReset();
-      subscribeOnce(instance.touched).then(touched => expect(touched.name).toBe(false));
+      subscribeOnce(instance.touched).then(touched =>
+        expect(touched.name).toBe(false)
+      );
     });
   });
 
   describe("handleChange", () => {
     it("updates the form when connected to change handler of input", done => {
-      subscribeOnce(instance.form).then(form => expect(form.email).toBe(initialValues.email));
+      subscribeOnce(instance.form).then(form =>
+        expect(form.email).toBe(initialValues.email)
+      );
       const email = chance.email();
       const event = {
         target: {
@@ -174,7 +192,7 @@ describe("createForm", () => {
         .then(done);
     });
 
-    it("runs field validation when called", done => {
+    it("runs field validation when validateSchema is provided", done => {
       const invalid = "invalid.email";
       const event = {
         target: {
@@ -186,6 +204,34 @@ describe("createForm", () => {
         .handleChange(event)
         .then(() => subscribeOnce(instance.errors))
         .then(errors => expect(errors.email).toBe("this must be a valid email"))
+        .then(done);
+    });
+
+    it("runs field validation when validateFn is provided", done => {
+      const invalid = "invalid.email";
+      const event = {
+        target: {
+          name: "email",
+          value: invalid
+        }
+      };
+      const instance = createForm({
+        initialValues: {
+          email: "",
+        },
+        validate: values => {
+          let errs = {};
+          if (values.email === "invalid.email") {
+            errs.email = "this email is invalid";
+          }
+          return errs;
+        },
+        onSubmit: (values) => console.log(values)
+      });
+      instance
+        .handleChange(event)
+        .then(() => subscribeOnce(instance.errors))
+        .then(errors => expect(errors.email).toBe("this email is invalid"))
         .then(done);
     });
   });

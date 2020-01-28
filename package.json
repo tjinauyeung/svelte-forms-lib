@@ -7,7 +7,7 @@
     "build": "NODE_ENV=production rollup -c rollup.config.js",
     "prepare": "npm run build",
     "test": "jest",
-    "test:watch": "jest --watchAll",
+    "test:watch": "concurrently \"rollup -c -w rollup.config.js\" \"jest --watchAll\"",
     "format": "prettier --write lib/**/*.{js,css}"
   },
   "files": [
@@ -42,6 +42,7 @@
     "@types/jest": "24.0.18",
     "@types/yup": "0.26.23",
     "chance": "1.1.0",
+    "concurrently": "5.1.0",
     "husky": "3.0.5",
     "jest": "24.9.0",
     "lint-staged": "9.2.5",
