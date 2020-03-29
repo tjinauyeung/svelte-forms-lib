@@ -173,6 +173,61 @@ describe("createForm", () => {
     });
   });
 
+  const validationAssert = (
+    action,
+    { error: errorArgs, success: successArgs }
+  ) => {
+    const getTest = () => {
+      describe("runs field validation", () => {
+        it("and set errors for invalid value", done => {
+          instance[action]
+            .apply(null, errorArgs)
+            .then(() => subscribeOnce(instance.errors))
+            .then(errors =>
+              expect(errors.email).toBe("this must be a valid email")
+            )
+            .then(done);
+        });
+        it("and not set errors for valid value", done => {
+          instance[action]
+            .apply(null, successArgs)
+            .then(() => subscribeOnce(instance.errors))
+            .then(errors => expect(errors.email).toBe(""))
+            .then(done);
+        });
+      });
+    };
+    describe("when validateSchema is provided", () => {
+      let instance = getInstance();
+      getTest();
+    });
+
+    describe("when validateFn is provided", () => {
+      const instance = createForm({
+        initialValues: {
+          email: ""
+        },
+        validate: values => {
+          let errs = {};
+          if (values.email === "invalid.email") {
+            errs.email = "this must be a valid email";
+          }
+          return errs;
+        },
+        onSubmit: values => console.log(values)
+      });
+
+      getTest();
+    });
+  };
+
+  describe("validateField", () => {
+    validationAssert("validateField", {
+      error: ["email", "invalid.email"],
+      success: ["email", "test@example.org"]
+    });
+  });
+
   describe("handleChange", () => {
     it("updates the form when connected to change handler of input", done => {
       subscribeOnce(instance.form).then(form =>
@@ -192,47 +247,23 @@ describe("createForm", () => {
         .then(done);
     });
 
-    it("runs field validation when validateSchema is provided", done => {
-      const invalid = "invalid.email";
-      const event = {
-        target: {
-          name: "email",
-          value: invalid
-        }
-      };
-      instance
-        .handleChange(event)
-        .then(() => subscribeOnce(instance.errors))
-        .then(errors => expect(errors.email).toBe("this must be a valid email"))
-        .then(done);
-    });
+    const eventInvalid = {
+      target: {
+        name: "email",
+        value: "invalid.email"
+      }
+    };
 
-    it("runs field validation when validateFn is provided", done => {
-      const invalid = "invalid.email";
-      const event = {
-        target: {
-          name: "email",
-          value: invalid
-        }
-      };
-      const instance = createForm({
-        initialValues: {
-          email: "",
-        },
-        validate: values => {
-          let errs = {};
-          if (values.email === "invalid.email") {
-            errs.email = "this email is invalid";
-          }
-          return errs;
-        },
-        onSubmit: (values) => console.log(values)
-      });
-      instance
-        .handleChange(event)
-        .then(() => subscribeOnce(instance.errors))
-        .then(errors => expect(errors.email).toBe("this email is invalid"))
-        .then(done);
+    const eventValid = {
+      target: {
+        name: "email",
+        value: "test@example.org"
+      }
+    };
+
+    validationAssert("handleChange", {
+      error: [eventInvalid],
+      success: [eventValid]
     });
   });
 
