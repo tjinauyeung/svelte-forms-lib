@@ -192,6 +192,29 @@ describe("createForm", () => {
         .then(done);
     });
 
+    it("uses checked value for checkbox inputs", done => {
+      instance = getInstance({
+        initialValues: {
+          terms: false
+        },
+        validationSchema: yup.object().shape({
+          terms: yup.bool().oneOf([true])
+        })
+      });
+      const event = {
+        target: {
+          name: "terms",
+          getAttribute: type => "checkbox",
+          checked: true
+        }
+      };
+      instance
+        .handleChange(event)
+        .then(() => subscribeOnce(instance.form))
+        .then(form => expect(form.terms).toBe(true))
+        .then(done);
+    });
+
     it("runs field validation when validateSchema is provided", done => {
       const invalid = "invalid.email";
       const event = {
@@ -217,7 +240,7 @@ describe("createForm", () => {
       };
       const instance = createForm({
         initialValues: {
-          email: "",
+          email: ""
         },
         validate: values => {
           let errs = {};
@@ -226,7 +249,7 @@ describe("createForm", () => {
           }
           return errs;
         },
-        onSubmit: (values) => console.log(values)
+        onSubmit: values => console.log(values)
       });
       instance
         .handleChange(event)
