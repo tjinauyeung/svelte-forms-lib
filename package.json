@@ -3,7 +3,7 @@
   "version": "1.0.4",
   "description": "Svelte forms lib - A lightweight library for managing forms in Svelte v3",
   "scripts": {
-    "start": "rollup -c rollup.config.js",
+    "start": "rollup -c -w rollup.config.js",
     "build": "NODE_ENV=production rollup -c rollup.config.js",
     "prepare": "npm run build",
     "test": "jest",
