@@ -12,6 +12,7 @@
   {name}
   type={type}
   value={$form[name]}
+  checked={$form[name]}
   on:change={handleChange}
   on:blur={handleChange}
   {...$$props} />
