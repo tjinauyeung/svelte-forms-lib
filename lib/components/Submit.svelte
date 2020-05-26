@@ -2,12 +2,7 @@
 import { getContext } from "svelte";
 import { key } from "./key";
 
-const { state, updateTouched } = getContext(key);
-
-console.log($state)
-for(let field in $state.touched) {
-  console.log(field)
-}
+const { state } = getContext(key);
 
 </script>
 
