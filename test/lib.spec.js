@@ -328,7 +328,7 @@ describe("createForm", () => {
     });
   });
 
-  describe("validateField", async () => {
+  describe("validateField", () => {
     it("validate a field only by name", done => {
       instance = getInstance({
         initialValues: {
@@ -351,7 +351,7 @@ describe("createForm", () => {
         .then(done);
     });
   });
-  describe("updateValidateField", async () => {
+  describe("updateValidateField", () => {
     it("update and validate a single field", done => {
       instance = getInstance({
         initialValues: {
