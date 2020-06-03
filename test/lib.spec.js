@@ -327,4 +327,53 @@ describe("createForm", () => {
       });
     });
   });
+
+  describe("validateField", () => {
+    it("validate a field only by name", done => {
+      instance = getInstance({
+        initialValues: {
+          name: "",
+          email: "",
+          country: ""
+        }
+      });
+
+      subscribeOnce(instance.errors).then(errors => {
+        const errorValues = nonEmpty(Object.values(errors));
+        expect(errorValues.length).toBe(0);
+      });
+
+      instance
+        .validateField("email")
+        .then(() => subscribeOnce(instance.errors))
+        .then(errors => nonEmpty(Object.values(errors)))
+        .then(errors => expect(errors.length).toBe(1))
+        .then(done);
+    });
+  });
+  describe("updateValidateField", () => {
+    it("update and validate a single field", done => {
+      instance = getInstance({
+        initialValues: {
+          name: "",
+          email: "",
+          country: ""
+        }
+      });
+
+      instance.errors.set({ name: "name is required" });
+
+      subscribeOnce(instance.errors).then(errors => {
+        const errorValues = nonEmpty(Object.values(errors));
+        expect(errorValues.length).toBe(1);
+      });
+
+      instance
+        .updateValidateField("name", "name")
+        .then(() => subscribeOnce(instance.errors))
+        .then(errors => nonEmpty(Object.values(errors)))
+        .then(errors => expect(errors.length).toBe(0))
+        .then(done);
+    });
+  });
 });
