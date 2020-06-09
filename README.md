@@ -25,3 +25,6 @@ Visit the <a href="https://svelte-forms-lib-sapper-docs.now.sh" target="_blank">
 ### Contributions
 
 Please feel free to submit any issue as means of feedback or create a PR for bug fixes / wanted features.
+
+### Looking for active maintainers
+See https://github.com/tjinauyeung/svelte-forms-lib/issues/30
