@@ -220,12 +220,11 @@ describe('createForm', () => {
           value: invalid,
         },
       };
+
       instance
         .handleChange(event)
         .then(() => subscribeOnce(instance.errors))
-        .then((errors) =>
-          expect(errors.email).toBe('this must be a valid email'),
-        )
+        .then(errors => expect(errors.email).toBe("email must be a valid email"))
         .then(done);
     });
 
