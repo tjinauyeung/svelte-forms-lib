@@ -1,7 +1,7 @@
 <script>
-  import { setContext } from "svelte";
-  import { createForm } from "../createForm";
-  import { key } from "./key";
+  import {setContext} from 'svelte';
+  import {createForm} from '../createForm';
+  import {key} from './key';
 
   export let initialValues = {};
   export let validate = null;
@@ -16,12 +16,12 @@
     handleChange,
     handleSubmit,
     updateField,
-    updateTouched
+    updateTouched,
   } = createForm({
     initialValues,
     validationSchema,
     validate,
-    onSubmit
+    onSubmit,
   });
 
   setContext(key, {
@@ -32,7 +32,7 @@
     handleChange,
     handleSubmit,
     updateField,
-    updateTouched
+    updateTouched,
   });
 </script>
 

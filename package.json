@@ -8,7 +8,7 @@
     "prepare": "npm run build",
     "test": "jest",
     "test:watch": "concurrently \"rollup -c -w rollup.config.js\" \"jest --watchAll\"",
-    "format": "prettier --write lib/**/*.{js,css}"
+    "format": "prettier --write lib/**/*.{js,svelte}"
   },
   "files": [
     "build/*",
