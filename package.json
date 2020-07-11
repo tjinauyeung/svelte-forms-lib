@@ -8,7 +8,8 @@
     "prepare": "npm run build",
     "test": "jest",
     "test:watch": "concurrently \"rollup -c -w rollup.config.js\" \"jest --watchAll\"",
-    "format": "prettier --write lib/**/*.{js,svelte}"
+    "format": "prettier --write lib/**/*.{js,svelte}",
+    "commit": "git-cz"
   },
   "files": [
     "build/*",
@@ -42,8 +43,10 @@
     "@types/jest": "26.0.4",
     "@types/yup": "0.29.3",
     "chance": "1.1.6",
+    "commitizen": "^4.1.2",
     "concurrently": "5.2.0",
     "cross-env": "^7.0.2",
+    "cz-conventional-changelog": "^3.2.0",
     "husky": "4.2.5",
     "jest": "26.1.0",
     "lint-staged": "10.2.11",
@@ -59,6 +62,11 @@
     "hooks": {
       "pre-commit": "npm run format",
       "pre-push": "npm run test"
+    }
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
     }
   }
 }
