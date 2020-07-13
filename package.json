@@ -53,6 +53,8 @@
     "husky": "4.2.5",
     "jest": "26.1.0",
     "jest-runner-eslint": "^0.10.0",
+    "jest-watch-select-projects": "^2.0.0",
+    "jest-watch-typeahead": "^0.6.0",
     "lint-staged": "10.2.11",
     "prettier": "^2.0.5",
     "prettier-plugin-svelte": "^1.1.0",
