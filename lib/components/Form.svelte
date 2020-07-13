@@ -1,6 +1,6 @@
 <script>
   import {setContext} from 'svelte';
-  import {createForm} from '../createForm';
+  import {createForm} from '../create-form';
   import {key} from './key';
 
   export let initialValues = {};
