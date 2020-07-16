@@ -35,11 +35,11 @@
   "module": "./build/index.mjs",
   "license": "MIT",
   "dependencies": {
-    "property-expr": "2.0.2",
-    "svelte": "3.24.0"
+    "property-expr": "2.0.2"
   },
   "devDependencies": {
     "@types/chance": "1.1.0",
+    "svelte": "3.24.0",
     "@types/jest": "26.0.4",
     "@types/yup": "0.29.3",
     "chance": "1.1.6",
