@@ -35,8 +35,7 @@
   "module": "./build/index.mjs",
   "license": "MIT",
   "dependencies": {
-    "property-expr": "2.0.2",
-    "svelte": "3.24.0"
+    "property-expr": "2.0.2"
   },
   "devDependencies": {
     "@types/chance": "1.1.0",
@@ -62,6 +61,8 @@
     "rollup-plugin-commonjs": "10.1.0",
     "rollup-plugin-node-resolve": "5.2.0",
     "rollup-plugin-svelte": "5.2.3",
+    "semantic-release": "^17.1.1",
+    "svelte": "3.24.0",
     "yup": "0.29.1"
   },
   "husky": {
