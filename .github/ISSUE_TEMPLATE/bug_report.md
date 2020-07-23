@@ -12,10 +12,9 @@ A clear and concise description of what the bug is.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+ - If you can demonstrate the bug using [our CodeSandbox template](https://codesandbox.io/s/react-forms-lib-bug-report-esdl2?file=/App.svelte), please do.
+ - If that's not possible, we recommend creating a small repo that illustrates the problem.
+ - Reproductions should be small, self-contained, correct examples – http://sscce.org.
 
 **Expected behavior**
 A clear and concise description of what you expected to happen.
