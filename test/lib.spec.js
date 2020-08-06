@@ -257,6 +257,29 @@ describe("createForm", () => {
         .then(errors => expect(errors.email).toBe("this email is invalid"))
         .then(done);
     });
+
+    it("assigns empty string to field if validateFn returns undefined", done => {
+      const value = "email@email.com";
+      const event = {
+        target: {
+          name: "email",
+          value
+        }
+      };
+      const instance = createForm({
+        initialValues: {
+          email: ""
+        },
+        validate: values => undefined,
+        onSubmit: values => console.log(values)
+      });
+
+      instance
+        .handleChange(event)
+        .then(() => subscribeOnce(instance.errors))
+        .then(errors => expect(errors.email).toBe(""))
+        .then(done);  
+    })
   });
 
   describe("handleSubmit", () => {
