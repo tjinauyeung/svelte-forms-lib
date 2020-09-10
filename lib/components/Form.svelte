@@ -36,7 +36,7 @@
   });
 </script>
 
-<form on:submit={handleSubmit} {...$$props}>
+<form on:submit={handleSubmit} {...$$restProps}>
   <slot
     {form}
     {errors}
