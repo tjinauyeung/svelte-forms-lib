@@ -260,11 +260,20 @@ describe("createForm", () => {
 
     it("assigns empty string to field if validateFn returns undefined", done => {
       const value = "email@email.com";
+    it('does not throw when no validationSchema of validateFn provided', async () => {
       const event = {
         target: {
-          name: "email",
-          value
-        }
+	  name: 'email',
+	  value: 'foo',
+	},
+      };
+      const instance = createForm({
+	initialValues: {email: ''},
+	onSubmit: console.log.bind(console),
+      });
+
+      expect(() => instance.handleChange(event)).not.toThrow();
+    });
       };
       const instance = createForm({
         initialValues: {
