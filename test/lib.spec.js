@@ -257,7 +257,7 @@ describe('createForm', () => {
         .then(done);
     });
 
-    it('does not throw when no validationSchema of validateFn provided', async () => {
+    it('does not throw when no validationSchema or validateFn provided', async () => {
       const event = {
         target: {
           name: 'email',
