@@ -171,10 +171,7 @@ describe('createForm', () => {
   });
 
   describe('handleChange', () => {
-    it('updates the form when connected to change handler of input', (done) => {
-      subscribeOnce(instance.form).then((form) =>
-        expect(form.email).toBe(initialValues.email),
-      );
+    it('updates the form when connected to change handler of input', async (done) => {
       const email = chance.email();
       const event = {
         target: {
@@ -182,6 +179,15 @@ describe('createForm', () => {
           value: email,
         },
       };
+
+      await new Promise((resolve) => {
+        subscribeOnce(instance.form).then((form) => {
+          expect(form.email).toBe(initialValues.email);
+
+          resolve();
+        });
+      });
+
       instance
         .handleChange(event)
         .then(() => subscribeOnce(instance.form))
@@ -224,7 +230,9 @@ describe('createForm', () => {
       instance
         .handleChange(event)
         .then(() => subscribeOnce(instance.errors))
-        .then(errors => expect(errors.email).toBe("email must be a valid email"))
+        .then((errors) =>
+          expect(errors.email).toBe('email must be a valid email'),
+        )
         .then(done);
     });
 
@@ -436,7 +444,7 @@ describe('createForm', () => {
         .then((errors) => {
           const errorValues = nonEmpty(Object.values(errors));
           expect(errorValues.length).toBe(1);
-          expect(errors.what).toBe("what is a required field");
+          expect(errors.what).toBe('what is a required field');
         })
         .then(done);
     });
@@ -467,8 +475,9 @@ describe('createForm', () => {
     beforeEach(() => {
       validationSchema = yup.object().shape({
         password: yup.string().required(),
-        passwordConfirmation: yup.string()
-          .oneOf([yup.ref('password'), null], "Passwords don't match!")
+        passwordConfirmation: yup
+          .string()
+          .oneOf([yup.ref('password'), null], "Passwords don't match!"),
       });
     });
 
@@ -495,7 +504,6 @@ describe('createForm', () => {
         })
         .then(done);
     });
-
 
     it('is valid when passwords match', (done) => {
       instance = getInstance({
