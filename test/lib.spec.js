@@ -220,12 +220,11 @@ describe('createForm', () => {
           value: invalid,
         },
       };
+
       instance
         .handleChange(event)
         .then(() => subscribeOnce(instance.errors))
-        .then((errors) =>
-          expect(errors.email).toBe('this must be a valid email'),
-        )
+        .then(errors => expect(errors.email).toBe("email must be a valid email"))
         .then(done);
     });
 
@@ -404,6 +403,120 @@ describe('createForm', () => {
         .then(() => subscribeOnce(instance.errors))
         .then((errors) => nonEmpty(Object.values(errors)))
         .then((errors) => expect(errors.length).toBe(0))
+        .then(done);
+    });
+  });
+
+  describe('when a validation depends on another field: using when', () => {
+    beforeEach(() => {
+      validationSchema = yup.object().shape({
+        wantsSomething: yup.boolean(),
+        what: yup.string().when('wantsSomething', {
+          is: true,
+          then: yup.string().required(),
+        }),
+      });
+    });
+
+    it('when a is true, b is required', (done) => {
+      instance = getInstance({
+        initialValues: {
+          wantsSomething: true,
+        },
+      });
+
+      subscribeOnce(instance.errors).then((errors) => {
+        const errorValues = nonEmpty(Object.values(errors));
+        expect(errorValues.length).toBe(0);
+      });
+
+      instance
+        .handleSubmit()
+        .then(() => subscribeOnce(instance.errors))
+        .then((errors) => {
+          const errorValues = nonEmpty(Object.values(errors));
+          expect(errorValues.length).toBe(1);
+          expect(errors.what).toBe("what is a required field");
+        })
+        .then(done);
+    });
+    it('when a is false, b is not required', (done) => {
+      instance = getInstance({
+        initialValues: {
+          wantsSomething: false,
+        },
+      });
+
+      subscribeOnce(instance.errors).then((errors) => {
+        const errorValues = nonEmpty(Object.values(errors));
+        expect(errorValues.length).toBe(0);
+      });
+
+      instance
+        .handleSubmit()
+        .then(() => subscribeOnce(instance.errors))
+        .then((errors) => {
+          const errorValues = nonEmpty(Object.values(errors));
+          expect(errorValues.length).toBe(0);
+        })
+        .then(done);
+    });
+  });
+
+  describe('when a validation depends on another field: using ref', () => {
+    beforeEach(() => {
+      validationSchema = yup.object().shape({
+        password: yup.string().required(),
+        passwordConfirmation: yup.string()
+          .oneOf([yup.ref('password'), null], "Passwords don't match!")
+      });
+    });
+
+    it("is invalid when passwords don't match", (done) => {
+      instance = getInstance({
+        initialValues: {
+          password: 'a',
+          passwordConfirmation: 'b',
+        },
+      });
+
+      subscribeOnce(instance.errors).then((errors) => {
+        const errorValues = nonEmpty(Object.values(errors));
+        expect(errorValues.length).toBe(0);
+      });
+
+      instance
+        .handleSubmit()
+        .then(() => subscribeOnce(instance.errors))
+        .then((errors) => {
+          const errorValues = nonEmpty(Object.values(errors));
+          expect(errorValues.length).toBe(1);
+          expect(errors.passwordConfirmation).toBe("Passwords don't match!");
+        })
+        .then(done);
+    });
+
+
+    it('is valid when passwords match', (done) => {
+      instance = getInstance({
+        initialValues: {
+          password: 'a',
+          passwordConfirmation: 'a',
+        },
+      });
+
+      subscribeOnce(instance.errors).then((errors) => {
+        const errorValues = nonEmpty(Object.values(errors));
+        expect(errorValues.length).toBe(0);
+      });
+
+      instance
+        .handleSubmit()
+        .then(() => subscribeOnce(instance.errors))
+        .then((errors) => {
+          const errorValues = nonEmpty(Object.values(errors));
+          expect(errorValues.length).toBe(0);
+        })
         .then(done);
     });
   });
