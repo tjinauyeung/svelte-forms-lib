@@ -1,4 +1,4 @@
-const {createForm} = require('../build');
+const {createForm} = require('../lib');
 const yup = require('yup');
 const Chance = require('chance');
 
