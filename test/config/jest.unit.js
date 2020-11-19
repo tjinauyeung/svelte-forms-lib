@@ -6,4 +6,9 @@ module.exports = {
   displayName: 'unit',
 
   testMatch: ['<rootDir>/test/*.spec.js'],
+
+  transform: {
+    '^.+\\.svelte$': 'jest-transform-svelte',
+    '^.+\\.js$': 'babel-jest',
+  },
 };

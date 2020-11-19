@@ -7,7 +7,7 @@
     "build": "cross-env NODE_ENV=production && rollup -c rollup.config.js",
     "prepare": "npm run build",
     "test": "jest",
-    "test:watch": "concurrently \"rollup -c -w rollup.config.js\" \"jest --watchAll\"",
+    "test:watch": "jest --watchAll",
     "format": "prettier --write lib/**/*.{js,svelte}",
     "commit": "git-cz"
   },
@@ -38,12 +38,12 @@
     "property-expr": "2.0.2"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.12.1",
     "@types/chance": "1.1.0",
     "@types/jest": "26.0.4",
     "@types/yup": "0.29.3",
     "chance": "1.1.6",
     "commitizen": "^4.1.2",
-    "concurrently": "5.2.0",
     "cross-env": "^7.0.2",
     "cz-conventional-changelog": "^3.2.0",
     "eslint": "^7.4.0",
@@ -52,6 +52,7 @@
     "husky": "4.2.5",
     "jest": "26.1.0",
     "jest-runner-eslint": "^0.10.0",
+    "jest-transform-svelte": "^2.1.1",
     "jest-watch-select-projects": "^2.0.0",
     "jest-watch-typeahead": "^0.6.0",
     "lint-staged": "10.2.11",
