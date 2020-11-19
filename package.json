@@ -38,6 +38,7 @@
     "property-expr": "2.0.2"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.12.1",
     "@types/chance": "1.1.0",
     "@types/jest": "26.0.4",
     "@types/yup": "0.29.3",
@@ -52,6 +53,7 @@
     "husky": "4.2.5",
     "jest": "26.1.0",
     "jest-runner-eslint": "^0.10.0",
+    "jest-transform-svelte": "^2.1.1",
     "jest-watch-select-projects": "^2.0.0",
     "jest-watch-typeahead": "^0.6.0",
     "lint-staged": "10.2.11",
