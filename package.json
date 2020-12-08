@@ -7,8 +7,9 @@
     "build": "cross-env NODE_ENV=production && rollup -c rollup.config.js",
     "prepare": "npm run build",
     "test": "jest",
-    "test:watch": "concurrently \"rollup -c -w rollup.config.js\" \"jest --watchAll\"",
-    "format": "prettier --write lib/**/*.{js,css}"
+    "test:watch": "jest --watchAll",
+    "format": "prettier --write lib/**/*.{js,svelte}",
+    "commit": "git-cz"
   },
   "files": [
     "build/*",
@@ -34,30 +35,46 @@
   "module": "./build/index.mjs",
   "license": "MIT",
   "dependencies": {
-    "property-expr": "2.0.2",
-    "svelte": "3.16.5"
+    "property-expr": "2.0.2"
   },
   "devDependencies": {
-    "@types/chance": "1.0.6",
-    "@types/jest": "24.0.18",
-    "@types/yup": "0.26.23",
-    "chance": "1.1.0",
-    "concurrently": "5.1.0",
+    "@babel/preset-env": "^7.12.1",
+    "@types/chance": "1.1.0",
+    "@types/jest": "26.0.4",
+    "@types/yup": "0.29.3",
+    "chance": "1.1.6",
+    "commitizen": "^4.1.2",
     "cross-env": "^7.0.2",
-    "husky": "3.0.5",
-    "jest": "24.9.0",
-    "lint-staged": "9.2.5",
-    "prettier": "1.18.2",
-    "rollup": "1.20.3",
+    "cz-conventional-changelog": "^3.2.0",
+    "eslint": "^7.4.0",
+    "eslint-config-prettier": "^6.11.0",
+    "eslint-plugin-unicorn": "^20.1.0",
+    "husky": "4.2.5",
+    "jest": "26.1.0",
+    "jest-runner-eslint": "^0.10.0",
+    "jest-transform-svelte": "^2.1.1",
+    "jest-watch-select-projects": "^2.0.0",
+    "jest-watch-typeahead": "^0.6.0",
+    "lint-staged": "10.2.11",
+    "prettier": "^2.0.5",
+    "prettier-plugin-svelte": "^1.1.0",
+    "rollup": "2.21.0",
     "rollup-plugin-commonjs": "10.1.0",
     "rollup-plugin-node-resolve": "5.2.0",
-    "rollup-plugin-svelte": "5.1.0",
-    "yup": "0.27.0"
+    "rollup-plugin-svelte": "5.2.3",
+    "semantic-release": "^17.1.1",
+    "svelte": "3.24.0",
+    "yup": "0.29.1"
   },
   "husky": {
     "hooks": {
       "pre-commit": "npm run format",
       "pre-push": "npm run test"
+    }
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
     }
   }
 }
