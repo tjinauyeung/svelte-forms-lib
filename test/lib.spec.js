@@ -278,7 +278,15 @@ describe("createForm", () => {
         .handleSubmit()
         .then(() => subscribeOnce(instance.errors))
         .then(errors => nonEmpty(Object.values(errors)))
-        .then(errors => expect(errors.length).toBe(3))
+        .then(errors => expect(errors.length).toBe(3));
+
+      instance.form.set({ name: "Ada Murphy" });
+
+      instance
+        .handleSubmit()
+        .then(() => subscribeOnce(instance.errors))
+        .then(errors => nonEmpty(Object.values(errors)))
+        .then(errors => expect(errors.length).toBe(2))
         .then(done);
     });
 
