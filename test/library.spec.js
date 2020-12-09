@@ -131,21 +131,7 @@ describe('createForm', () => {
       );
     });
 
-    it('returns false if some fields are untouched', async () => {
-      const touched = await subscribeOnce(instance.touched);
-      const someUntouched = Object.values(touched).some((val) => val === false);
-      expect(someUntouched).toBe(true);
-
-      const isValid = await subscribeOnce(instance.isValid);
-      expect(isValid).toBe(false);
-    });
-
-    it('returns true if form is valid and all fields touched', () => {
-      instance.touched.set({
-        name: true,
-        email: true,
-        country: true,
-      });
+    it('returns true if form is valid', () => {
       subscribeOnce(instance.isValid).then((isValid) =>
         expect(isValid).toBe(true),
       );
