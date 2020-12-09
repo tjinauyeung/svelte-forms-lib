@@ -304,7 +304,7 @@ describe('createForm', () => {
   });
 
   describe('handleSubmit', () => {
-    it('validates form on submit when validationSchema is provided', (done) => {
+    it('validates form on submit when validationSchema is provided', async (done) => {
       instance = getInstance({
         initialValues: {
           name: '',
@@ -318,11 +318,23 @@ describe('createForm', () => {
         expect(errorValues.length).toBe(0);
       });
 
+      await instance
+        .handleSubmit()
+        .then(() => subscribeOnce(instance.errors))
+        .then((errors) => nonEmpty(Object.values(errors)))
+        .then((errors) => expect(errors.length).toBe(3));
+
+      await instance.form.set({
+        name: chance.name(),
+        email: '',
+        country: ''
+      });
+
       instance
         .handleSubmit()
         .then(() => subscribeOnce(instance.errors))
         .then((errors) => nonEmpty(Object.values(errors)))
-        .then((errors) => expect(errors.length).toBe(3))
+        .then((errors) => expect(errors.length).toBe(2))
         .then(done);
     });
 
