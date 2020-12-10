@@ -41,19 +41,6 @@ describe('createForm', () => {
     instance = getInstance();
   });
 
-  describe('config', () => {
-    it('requires initialValues to be provided and not to be empty', () => {
-      const consoleWarn = jest.spyOn(console, 'warn').mockImplementation();
-      const initialValues = {};
-      const config = {initialValues, onSubmit: jest.fn()};
-
-      createForm(config);
-      expect(consoleWarn).toBeCalledWith(
-        'createForm requires initialValues to be a non empty object or array, provided {}',
-      );
-    });
-  });
-
   describe('$form', () => {
     it('returns an observable with a subscribe method', () => {
       expect(instance.form.subscribe).toBeDefined();
