@@ -1,3 +1,4 @@
+/* globals beforeEach, console, describe, expect, it, require, jest */
 const {createForm} = require('../lib');
 const yup = require('yup');
 const Chance = require('chance');
@@ -5,7 +6,7 @@ const Chance = require('chance');
 const chance = new Chance();
 
 function nonEmpty(array) {
-  return array.filter((str) => str !== '');
+  return array.filter((string) => string !== '');
 }
 
 function subscribeOnce(observable) {
@@ -72,11 +73,30 @@ describe('createForm', () => {
       expect(instance.errors.subscribe).toBeDefined();
     });
 
-    it('contains the current values which are accessed by subscription', () => {
+    it('should match the shape of validationSchema', () => {
+      instance = getInstance({
+        initialValues: {
+          name: '',
+          address: {
+            street: '',
+            city: '',
+            country: ''
+          },
+        },
+        validationSchema: yup.object().shape({
+          name: yup.string().required(),
+          address: yup.object().shape({
+            street: yup.string().required(),
+            city: yup.string().required()
+          })
+        })
+      });
+
       subscribeOnce(instance.errors).then((errors) => {
         expect(errors.name).toBe('');
-        expect(errors.email).toBe('');
-        expect(errors.country).toBe('');
+        expect(errors.address.street).toBe('');
+        expect(errors.address.city).toBe('');
+        expect(errors.address.country).not.toBeDefined();
       });
     });
   });
