@@ -120,35 +120,30 @@ describe('createForm', () => {
       expect(instance.isValid.subscribe).toBeDefined();
     });
 
-    it('returns false if form is invalid', () => {
-      instance = getInstance({
+    it('returns true if form is valid', async (done) => {
+      instance
+        .handleSubmit()
+        .then(() => subscribeOnce(instance.isValid))
+        .then((isValid) => {
+          expect(isValid).toBe(true);
+        })
+        .then(done);
+    });
+
+    it('returns false if form is invalid', async (done) => {
+      await instance.form.set({
         name: '',
         email: '',
-        country: '',
+        country: ''
       });
-      subscribeOnce(instance.isValid).then((isValid) =>
-        expect(isValid).toBe(false),
-      );
-    });
 
-    it('returns false if some fields are untouched', async () => {
-      const touched = await subscribeOnce(instance.touched);
-      const someUntouched = Object.values(touched).some((val) => val === false);
-      expect(someUntouched).toBe(true);
-
-      const isValid = await subscribeOnce(instance.isValid);
-      expect(isValid).toBe(false);
-    });
-
-    it('returns true if form is valid and all fields touched', () => {
-      instance.touched.set({
-        name: true,
-        email: true,
-        country: true,
-      });
-      subscribeOnce(instance.isValid).then((isValid) =>
-        expect(isValid).toBe(true),
-      );
+      instance
+        .handleSubmit()
+        .then(() => subscribeOnce(instance.isValid))
+        .then((isValid) => {
+          expect(isValid).toBe(false);
+        })
+        .then(done);
     });
   });
 
@@ -359,7 +354,7 @@ describe('createForm', () => {
     });
 
     it('calls onSubmit when form is valid', (done) => {
-      expect(onSubmit).not.toBeCalled();
+      instance = getInstance();
       instance.handleSubmit().then(expect(onSubmit).toBeCalled).then(done);
     });
 
