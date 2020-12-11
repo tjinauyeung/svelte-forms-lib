@@ -42,15 +42,11 @@ describe('createForm', () => {
   });
 
   describe('config', () => {
-    it('requires initialValues to be provided and not to be empty', () => {
-      const consoleWarn = jest.spyOn(console, 'warn').mockImplementation();
-      const initialValues = {};
-      const config = {initialValues, onSubmit: jest.fn()};
+    it('does not throw when no initialValues provided', () => {
+      const initialValues = undefined;
+      const config = { initialValues };
 
-      createForm(config);
-      expect(consoleWarn).toBeCalledWith(
-        'createForm requires initialValues to be a non empty object or array, provided {}',
-      );
+      expect(() => createForm(config)).not.toThrow();
     });
   });
 
