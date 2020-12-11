@@ -131,10 +131,10 @@ describe('createForm', () => {
       );
     });
 
-    it('returns true if form is valid', () => {
-      subscribeOnce(instance.isValid).then((isValid) =>
-        expect(isValid).toBe(true),
-      );
+    it('returns true if form is valid', async (done) => {
+      subscribeOnce(instance.isValid)
+        .then((isValid) => expect(isValid).toBe(true))
+        .then(done);
     });
   });
 
