@@ -120,6 +120,12 @@ describe('createForm', () => {
       expect(instance.isValid.subscribe).toBeDefined();
     });
 
+    it('returns true if form is valid', async (done) => {
+      subscribeOnce(instance.isValid)
+        .then((isValid) => expect(isValid).toBe(true))
+        .then(done);
+    });
+
     it('returns false if form is invalid', () => {
       instance = getInstance({
         name: '',
@@ -129,12 +135,6 @@ describe('createForm', () => {
       subscribeOnce(instance.isValid).then((isValid) =>
         expect(isValid).toBe(false),
       );
-    });
-
-    it('returns true if form is valid', async (done) => {
-      subscribeOnce(instance.isValid)
-        .then((isValid) => expect(isValid).toBe(true))
-        .then(done);
     });
   });
 
