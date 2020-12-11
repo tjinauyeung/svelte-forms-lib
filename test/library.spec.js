@@ -41,6 +41,15 @@ describe('createForm', () => {
     instance = getInstance();
   });
 
+  describe('config', () => {
+    it('does not throw when no initialValues provided', () => {
+      const initialValues = undefined;
+      const config = { initialValues };
+
+      expect(() => createForm(config)).not.toThrow();
+    });
+  });
+
   describe('$form', () => {
     it('returns an observable with a subscribe method', () => {
       expect(instance.form.subscribe).toBeDefined();
