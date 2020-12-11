@@ -121,20 +121,29 @@ describe('createForm', () => {
     });
 
     it('returns true if form is valid', async (done) => {
-      subscribeOnce(instance.isValid)
-        .then((isValid) => expect(isValid).toBe(true))
+      instance
+        .handleSubmit()
+        .then(() => subscribeOnce(instance.isValid))
+        .then((isValid) => {
+          expect(isValid).toBe(true);
+        })
         .then(done);
     });
 
-    it('returns false if form is invalid', () => {
-      instance = getInstance({
+    it('returns false if form is invalid', async (done) => {
+      await instance.form.set({
         name: '',
         email: '',
-        country: '',
+        country: ''
       });
-      subscribeOnce(instance.isValid).then((isValid) =>
-        expect(isValid).toBe(false),
-      );
+
+      instance
+        .handleSubmit()
+        .then(() => subscribeOnce(instance.isValid))
+        .then((isValid) => {
+          expect(isValid).toBe(false);
+        })
+        .then(done);
     });
   });
 
@@ -345,7 +354,7 @@ describe('createForm', () => {
     });
 
     it('calls onSubmit when form is valid', (done) => {
-      expect(onSubmit).not.toBeCalled();
+      instance = getInstance();
       instance.handleSubmit().then(expect(onSubmit).toBeCalled).then(done);
     });
 
