@@ -16,15 +16,30 @@
   <img src="https://img.shields.io/npm/l/svelte-forms-lib.svg" alt="license">
 </a>
 
-Svelte forms lib is a lightweight library for managing forms in Svelte, with an <a href="https://github.com/jaredpalmer/formik" target="_blank">Formik</a> like API.
+Svelte forms lib is a lightweight library for managing forms in Svelte, with an
+<a href="https://github.com/jaredpalmer/formik" target="_blank">Formik</a> like API.
 
 ### Docs
 
-Visit the <a href="https://svelte-forms-lib-sapper-docs.now.sh" target="_blank">documentation website</a> to learn about the API and see examples.
+Visit the <a href="https://svelte-forms-lib-sapper-docs.now.sh" target="_blank">documentation
+website</a> to learn about the API and see examples.
 
 ### Contributions
 
-Please feel free to submit any issue as means of feedback or create a PR for bug fixes / wanted features.
+Please feel free to submit any issue as means of feedback or create a PR for bug fixes
+/ wanted features.
+
+#### Commit message conventions
+
+This project uses [`semantic-release`](https://github.com/semantic-release/semantic-release)
+for versioning, which requires commit messages to adhere to a specific format.
+
+The easiest way to write commit messages which adhere to the format is to use
+our npm script to write your commit messages:
+
+```bash
+npm run commit
+```
 
 ### Join as contributor
 See https://github.com/tjinauyeung/svelte-forms-lib/issues/30
