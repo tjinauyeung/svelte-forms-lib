@@ -35,7 +35,7 @@ This project uses [`semantic-release`](https://github.com/semantic-release/seman
 for versioning, which requires commit messages to adhere to a specific format.
 
 The easiest way to write commit messages which adhere to the format is to use
-our npm script to write your commit messages:
+our npm script:
 
 ```bash
 npm run commit
