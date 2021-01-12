@@ -102,11 +102,13 @@ describe('createForm', () => {
       expect(instance.errors.subscribe).toBeDefined();
     });
 
-    it('contains the current values which are accessed by subscription', () => {
+    it('contains the current values which are accessed by subscription', (done) => {
       subscribeOnce(instance.touched).then((touched) => {
         expect(touched.name).toBe(false);
         expect(touched.email).toBe(false);
         expect(touched.country).toBe(false);
+
+	done();
       });
     });
   });
