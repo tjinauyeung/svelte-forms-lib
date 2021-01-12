@@ -44,7 +44,7 @@ describe('createForm', () => {
   describe('config', () => {
     it('does not throw when no initialValues provided', () => {
       const initialValues = undefined;
-      const config = { initialValues };
+      const config = {initialValues};
 
       expect(() => createForm(config)).not.toThrow();
     });
@@ -69,30 +69,53 @@ describe('createForm', () => {
       expect(instance.errors.subscribe).toBeDefined();
     });
 
-    it('should match the shape of validationSchema', () => {
-      instance = getInstance({
-        initialValues: {
-          name: '',
-          address: {
-            street: '',
-            city: '',
-            country: ''
-          },
+    it('should match the shape of validationSchema', (done) => {
+      const initialValues = {
+        objectWithPrimitives: {foo: '', bar: '', baz: ''},
+        arrayOfPrimitives: [],
+        arrayOfObjects: [],
+        objectWithMixedTypes: {
+          foo: '',
+          arrayOfPrimitives: [],
         },
-        validationSchema: yup.object().shape({
-          name: yup.string().required(),
-          address: yup.object().shape({
-            street: yup.string().required(),
-            city: yup.string().required()
-          })
-        })
+      };
+      const validationSchema = yup.object().shape({
+        primitive: yup.string().required(),
+        arrayOfPrimitives: yup.array().of(yup.string()).required(),
+        objectWithMixedTypes: yup.object().shape({
+          foo: yup.string().required(),
+          arrayOfPrimitives: yup.array().of(yup.string()).required(),
+        }),
+        objectWithPrimitives: yup.object().shape({
+          foo: yup.string().required(),
+          bar: yup.string().required(),
+        }),
+        arrayOfObjects: yup.array().of(
+          yup.object({
+            foo: yup.string().required(),
+            bar: yup.string().required(),
+          }),
+        ),
+      });
+      instance = getInstance({
+        initialValues,
+        validationSchema,
       });
 
       subscribeOnce(instance.errors).then((errors) => {
-        expect(errors.name).toBe('');
-        expect(errors.address.street).toBe('');
-        expect(errors.address.city).toBe('');
-        expect(errors.address.country).not.toBeDefined();
+        expect(errors.primitive).toBe('');
+        expect(errors.arrayOfPrimitives).toEqual([]);
+
+        expect(errors.objectWithPrimitives.foo).toBe('');
+        expect(errors.objectWithPrimitives.bar).toBe('');
+        expect(errors.objectWithPrimitives.baz).not.toBeDefined();
+
+        expect(errors.objectWithMixedTypes.foo).toBe('');
+        expect(errors.objectWithMixedTypes.arrayOfPrimitives).toEqual([]);
+
+        expect(errors.arrayOfObjects).toEqual([]);
+
+        done();
       });
     });
   });
@@ -108,7 +131,7 @@ describe('createForm', () => {
         expect(touched.email).toBe(false);
         expect(touched.country).toBe(false);
 
-	done();
+        done();
       });
     });
   });
@@ -132,7 +155,7 @@ describe('createForm', () => {
       await instance.form.set({
         name: '',
         email: '',
-        country: ''
+        country: '',
       });
 
       instance
@@ -340,7 +363,7 @@ describe('createForm', () => {
       await instance.form.set({
         name: chance.name(),
         email: '',
-        country: ''
+        country: '',
       });
 
       instance
