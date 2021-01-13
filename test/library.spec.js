@@ -44,7 +44,7 @@ describe('createForm', () => {
   describe('config', () => {
     it('does not throw when no initialValues provided', () => {
       const initialValues = undefined;
-      const config = { initialValues };
+      const config = {initialValues};
 
       expect(() => createForm(config)).not.toThrow();
     });
@@ -69,30 +69,68 @@ describe('createForm', () => {
       expect(instance.errors.subscribe).toBeDefined();
     });
 
-    it('should match the shape of validationSchema', () => {
-      instance = getInstance({
-        initialValues: {
-          name: '',
-          address: {
-            street: '',
-            city: '',
-            country: ''
-          },
-        },
-        validationSchema: yup.object().shape({
-          name: yup.string().required(),
-          address: yup.object().shape({
-            street: yup.string().required(),
-            city: yup.string().required()
-          })
-        })
+    describe('using validationSchema', () => {
+      it('initialises primitive properties to empty strings', async () => {
+        const initialValues = {foo: 'bar', baz: 'quux', nested: {foo: 'bar'}};
+        const validationSchema = yup.object().shape({
+          foo: yup.string().required(),
+          baz: yup.string().required(),
+          nested: yup.object().shape({foo: yup.string().required()}),
+        });
+        const instance = getInstance({initialValues, validationSchema});
+        const $errors = await subscribeOnce(instance.errors);
+
+        expect($errors.foo).toBe('');
+        expect($errors.baz).toBe('');
+        expect($errors.nested.foo).toBe('');
       });
 
-      subscribeOnce(instance.errors).then((errors) => {
-        expect(errors.name).toBe('');
-        expect(errors.address.street).toBe('');
-        expect(errors.address.city).toBe('');
-        expect(errors.address.country).not.toBeDefined();
+      it('does not initialise initialValues not defined in schema', async () => {
+        const initialValues = {notInSchema: ''};
+        const validationSchema = yup
+          .object()
+          .shape({foo: yup.string().required()});
+        const instance = getInstance({initialValues, validationSchema});
+        const $errors = await subscribeOnce(instance.errors);
+
+        expect($errors.notInSchema).toBeUndefined();
+      });
+
+      it('contains an empty array when initialValues property is empty', async () => {
+        const initialValues = {foo: []};
+        const validationSchema = yup.object().shape({
+          stringArray: yup.array().of(yup.string().required()),
+          objectArray: yup
+            .array()
+            .of(
+              yup
+                .object()
+                .shape({foo: yup.array().of(yup.string().required())}),
+            ),
+          nested: yup
+            .object()
+            .shape({foo: yup.array().of(yup.string().required())}),
+        });
+        const instance = getInstance({initialValues, validationSchema});
+        const $errors = await subscribeOnce(instance.errors);
+
+        expect($errors.stringArray).toEqual([]);
+        expect($errors.objectArray).toEqual([]);
+        expect($errors.nested.foo).toEqual([]);
+      });
+
+      it('preserves number of initial values for array properties', async () => {
+        const initialValues = {foo: [{name: 'foo'}, {name: 'bar'}]};
+        const validationSchema = yup.object().shape({
+          foo: yup
+            .array()
+            .of(yup.object().shape({name: yup.string().required()})),
+        });
+        const instance = getInstance({initialValues, validationSchema});
+        const $errors = await subscribeOnce(instance.errors);
+        const $form = await subscribeOnce(instance.form);
+
+        expect($errors.foo.length).toEqual($form.foo.length);
       });
     });
   });
@@ -102,11 +140,13 @@ describe('createForm', () => {
       expect(instance.errors.subscribe).toBeDefined();
     });
 
-    it('contains the current values which are accessed by subscription', () => {
+    it('contains the current values which are accessed by subscription', (done) => {
       subscribeOnce(instance.touched).then((touched) => {
         expect(touched.name).toBe(false);
         expect(touched.email).toBe(false);
         expect(touched.country).toBe(false);
+
+        done();
       });
     });
   });
@@ -130,7 +170,7 @@ describe('createForm', () => {
       await instance.form.set({
         name: '',
         email: '',
-        country: ''
+        country: '',
       });
 
       instance
@@ -338,7 +378,7 @@ describe('createForm', () => {
       await instance.form.set({
         name: chance.name(),
         email: '',
-        country: ''
+        country: '',
       });
 
       instance
