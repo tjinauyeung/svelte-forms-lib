@@ -44,7 +44,7 @@ describe('createForm', () => {
   describe('config', () => {
     it('does not throw when no initialValues provided', () => {
       const initialValues = undefined;
-      const config = { initialValues };
+      const config = {initialValues};
 
       expect(() => createForm(config)).not.toThrow();
     });
@@ -70,22 +70,18 @@ describe('createForm', () => {
     });
 
     it('should match the shape of validationSchema', () => {
-      instance = getInstance({
+      const instance = getInstance({
         initialValues: {
           name: '',
-          address: {
-            street: '',
-            city: '',
-            country: ''
-          },
+          address: {street: '', city: '', country: ''},
         },
         validationSchema: yup.object().shape({
           name: yup.string().required(),
           address: yup.object().shape({
             street: yup.string().required(),
-            city: yup.string().required()
-          })
-        })
+            city: yup.string().required(),
+          }),
+        }),
       });
 
       subscribeOnce(instance.errors).then((errors) => {
@@ -111,6 +107,58 @@ describe('createForm', () => {
     });
   });
 
+  describe('$modified', () => {
+    it('returns an observable with a subscribe method', () => {
+      expect(instance.modified.subscribe).toBeDefined();
+    });
+
+    it('is false for initialized values', async () => {
+      const instance = getInstance({
+        initialValues: {
+          name: '',
+          address: {street: '', city: '', country: ''},
+          xs: [{foo: 'bar'}],
+        },
+      });
+      const $modified = await subscribeOnce(instance.modified);
+
+      expect($modified.name).toBe(false);
+      expect($modified.address).toBe(false);
+      expect($modified.xs).toBe(false);
+    });
+
+    it.only('is true for changed values', async () => {
+      const name = 'foo';
+      const street = 'bar';
+      const xFoo = 'baz';
+      const nameEvent = {target: {name: 'name', value: name}};
+      const streetEvent = {target: {name: 'address.street', value: street}};
+      const xEvent = {target: {name: 'xs[0].foo', value: xFoo}};
+      const instance = getInstance({
+        initialValues: {
+          name: '',
+          address: {street: '', city: '', country: ''},
+          xs: [{foo: 'bar'}],
+        },
+      });
+      let $modified;
+
+      await instance.handleChange(nameEvent);
+      $modified = await subscribeOnce(instance.modified);
+
+      expect($modified.name).toBe(true);
+      expect($modified.address).toBe(false);
+      expect($modified.xs).toBe(false);
+
+      await instance.handleChange(streetEvent);
+      $modified = await subscribeOnce(instance.modified);
+
+      expect($modified.name).toBe(true);
+      expect($modified.address).toBe(true);
+      expect($modified.xs).toBe(false);
+    });
+  });
+
   describe('$isValid', () => {
     it('returns an observable with a subscribe method', () => {
       expect(instance.isValid.subscribe).toBeDefined();
@@ -130,7 +178,7 @@ describe('createForm', () => {
       await instance.form.set({
         name: '',
         email: '',
-        country: ''
+        country: '',
       });
 
       instance
@@ -338,7 +386,7 @@ describe('createForm', () => {
       await instance.form.set({
         name: chance.name(),
         email: '',
-        country: ''
+        country: '',
       });
 
       instance
