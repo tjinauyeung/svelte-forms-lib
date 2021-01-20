@@ -151,6 +151,79 @@ describe('createForm', () => {
     });
   });
 
+  describe('$modified', () => {
+    it('returns an observable with a subscribe method', () => {
+      expect(instance.modified.subscribe).toBeDefined();
+    });
+
+    it('is false for initialized values', async () => {
+      const instance = getInstance({
+        initialValues: {
+          name: '',
+          address: {street: '', city: '', country: ''},
+          xs: [{foo: 'bar'}],
+        },
+      });
+      const $modified = await subscribeOnce(instance.modified);
+
+      expect($modified.name).toBe(false);
+      expect($modified.address).toBe(false);
+      expect($modified.xs).toBe(false);
+    });
+
+    it('sets changed values to true', async () => {
+      const name = 'foo';
+      const street = 'bar';
+      const xFoo = 'baz';
+      const nameEvent = {target: {name: 'name', value: name}};
+      const streetEvent = {target: {name: 'address.street', value: street}};
+      const xEvent = {target: {name: 'xs[0].foo', value: xFoo}};
+      const instance = getInstance({
+        initialValues: {
+          name: '',
+          address: {street: '', city: '', country: ''},
+          xs: [{foo: 'bar'}],
+        },
+        validationSchema: yup.object().shape({
+          name: yup.string(),
+          address: yup.object().shape({
+            street: yup.string(),
+            city: yup.string(),
+            country: yup.string(),
+          }),
+          xs: yup.array().of(
+            yup.object().shape({
+              foo: yup.string(),
+            }),
+          ),
+        }),
+      });
+      let $modified;
+
+      await instance.handleChange(nameEvent);
+      const $form = await subscribeOnce(instance.form);
+      $modified = await subscribeOnce(instance.modified);
+
+      expect($modified.name).toBe(true);
+      expect($modified.address).toBe(false);
+      expect($modified.xs).toBe(false);
+
+      await instance.handleChange(streetEvent);
+      $modified = await subscribeOnce(instance.modified);
+
+      expect($modified.name).toBe(true);
+      expect($modified.address).toBe(true);
+      expect($modified.xs).toBe(false);
+
+      await instance.handleChange(xEvent);
+      $modified = await subscribeOnce(instance.modified);
+
+      expect($modified.name).toBe(true);
+      expect($modified.address).toBe(true);
+      expect($modified.xs).toBe(true);
+    });
+  });
+
   describe('$isValid', () => {
     it('returns an observable with a subscribe method', () => {
       expect(instance.isValid.subscribe).toBeDefined();
