@@ -127,7 +127,7 @@ describe('createForm', () => {
       expect($modified.xs).toBe(false);
     });
 
-    it.only('is true for changed values', async () => {
+    it('sets changed values to true', async () => {
       const name = 'foo';
       const street = 'bar';
       const xFoo = 'baz';
@@ -140,10 +140,24 @@ describe('createForm', () => {
           address: {street: '', city: '', country: ''},
           xs: [{foo: 'bar'}],
         },
+        validationSchema: yup.object().shape({
+          name: yup.string(),
+          address: yup.object().shape({
+            street: yup.string(),
+            city: yup.string(),
+            country: yup.string(),
+          }),
+          xs: yup.array().of(
+            yup.object().shape({
+              foo: yup.string(),
+            }),
+          ),
+        }),
       });
       let $modified;
 
       await instance.handleChange(nameEvent);
+      const $form = await subscribeOnce(instance.form);
       $modified = await subscribeOnce(instance.modified);
 
       expect($modified.name).toBe(true);
@@ -156,6 +170,13 @@ describe('createForm', () => {
       expect($modified.name).toBe(true);
       expect($modified.address).toBe(true);
       expect($modified.xs).toBe(false);
+
+      await instance.handleChange(xEvent);
+      $modified = await subscribeOnce(instance.modified);
+
+      expect($modified.name).toBe(true);
+      expect($modified.address).toBe(true);
+      expect($modified.xs).toBe(true);
     });
   });
 
