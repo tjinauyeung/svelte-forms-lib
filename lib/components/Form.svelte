@@ -45,5 +45,6 @@
     {handleChange}
     {handleSubmit}
     {updateField}
-    {updateTouched} />
+    {updateTouched}
+  />
 </form>

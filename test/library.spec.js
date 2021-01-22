@@ -584,6 +584,7 @@ describe('createForm', () => {
         })
         .then(done);
     });
+
     it('when a is false, b is not required', (done) => {
       instance = getInstance({
         initialValues: {

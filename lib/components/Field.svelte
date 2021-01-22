@@ -14,4 +14,5 @@
   value={$form[name]}
   on:change={handleChange}
   on:blur={handleChange}
-  {...$$props} />
+  {...$$props}
+/>
