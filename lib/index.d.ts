@@ -28,6 +28,10 @@ type ErrorProps = {
   class?: string;
 };
 
+type TextareaProps = {
+  name: string;
+};
+
 declare function createForm<Inf = Record<string, unknown>>(formProps: {
   initialValues: Inf;
   onSubmit: (values: Inf) => any | Promise<any>;
@@ -72,6 +76,8 @@ declare class Form extends SvelteComponentTyped<
 
 declare class Field extends SvelteComponentTyped<FieldProps, {}, {}> {}
 
+declare class Textarea extends SvelteComponentTyped<TextareaProps, {}, {}> {}
+
 declare class Select extends SvelteComponentTyped<
   SelectProps,
   {},
@@ -84,4 +90,4 @@ declare class ErrorMessage extends SvelteComponentTyped<
   {default: any}
 > {}
 
-export {createForm, Form, Field, Select, ErrorMessage};
+export {createForm, Form, Field, Select, ErrorMessage, Textarea};
