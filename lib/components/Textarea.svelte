@@ -7,6 +7,6 @@
   const {form, handleChange} = getContext(key);
 </script>
 
-<textarea {name} {...$$props} on:change={handleChange} on:blur={handleChange}>
-  {$form[name]}
-</textarea>
+<!-- There is a weird error when prettier formats this so we ignore it -->
+<!-- prettier-ignore -->
+<textarea {name} {...$$props} on:change={handleChange} on:blur={handleChange}>{$form[name]}</textarea>
