@@ -35,8 +35,7 @@
   "module": "./build/index.mjs",
   "license": "MIT",
   "dependencies": {
-    "dequal": "^2.0.2",
-    "property-expr": "2.0.4"
+    "dequal": "^2.0.2"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.12.11",
