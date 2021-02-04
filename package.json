@@ -35,7 +35,7 @@
   "module": "./build/index.mjs",
   "license": "MIT",
   "dependencies": {
-    "lodash.isequal": "^4.5.0",
+    "dequal": "^2.0.2",
     "property-expr": "2.0.4"
   },
   "devDependencies": {
