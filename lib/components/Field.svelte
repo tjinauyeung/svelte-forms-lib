@@ -1,16 +1,14 @@
 <script>
   import {getContext} from 'svelte';
+  import {derived} from 'svelte/store';
   import {key} from './key';
 
   export let name;
   export let type = 'text';
-  export let error;
 
   const {form, handleChange, errors} = getContext(key);
 
-  $: {
-    error = $errors[name];
-  }
+  export const error = derived(errors, ($errors) => $errors[name]);
 </script>
 
 <input
