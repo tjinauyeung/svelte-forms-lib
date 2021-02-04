@@ -12,12 +12,11 @@ import type {ObjectSchema} from 'yup';
  *
  * */
 export type FormProps<Inf = Record<string, unknown>> = {
-  class?: string;
   initialValues: Inf;
   onSubmit: ((values: Inf) => any) | ((values: Inf) => Promise<any>);
   validate?: (values: Inf) => any | undefined;
   validationSchema?: ObjectSchema<any>;
-};
+}
 
 type FieldProps = {
   name: string;
@@ -43,12 +42,7 @@ type TextareaProps = {
   rows?: number;
 };
 
-declare function createForm<Inf = Record<string, unknown>>(formProps: {
-  initialValues: Inf;
-  onSubmit: (values: Inf) => any | Promise<any>;
-  validate?: (values: Inf) => any | undefined;
-  validationSchema?: ObjectSchema<any>;
-}): {
+type FormState<Inf = Record<string, unknown>> = {
   form: Writable<Inf>;
   errors: Writable<Record<keyof Inf, string>>;
   touched: Writable<Record<keyof Inf, boolean>>;
@@ -77,12 +71,31 @@ declare function createForm<Inf = Record<string, unknown>>(formProps: {
   handleSubmit: () => any;
 };
 
+declare function createForm<Inf = Record<string, unknown>>(formProps: {
+  initialValues: Inf;
+  onSubmit: (values: Inf) => any | Promise<any>;
+  validate?: (values: Inf) => any | undefined;
+  validationSchema?: ObjectSchema<any>;
+}): FormState<Inf>;
+
 declare class Form extends SvelteComponentTyped<
   FormProps & {
     class?: string;
   },
   {},
-  {default: any}
+  {
+    default: Pick<
+      FormState,
+      | 'errors'
+      | 'touched'
+      | 'updateField'
+      | 'updateTouched'
+      | 'handleChange'
+      | 'handleSubmit'
+      | 'form'
+      | 'state'
+    >;
+  }
 > {}
 
 declare class Field extends SvelteComponentTyped<FieldProps, {}, {}> {}
