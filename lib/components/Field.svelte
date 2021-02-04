@@ -4,8 +4,13 @@
 
   export let name;
   export let type = 'text';
+  export let error;
 
-  const {form, handleChange} = getContext(key);
+  const {form, handleChange, errors} = getContext(key);
+
+  $: {
+    error = $errors[name];
+  }
 </script>
 
 <input

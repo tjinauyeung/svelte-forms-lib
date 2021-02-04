@@ -3,6 +3,13 @@
   import {createForm} from '../create-form';
   import {key} from './key';
 
+  export let createdForm = createForm({
+    initialValues,
+    validationSchema,
+    validate,
+    onSubmit,
+  });
+
   export let initialValues = {};
   export let validate = null;
   export let validationSchema = null;
@@ -17,12 +24,7 @@
     handleSubmit,
     updateField,
     updateTouched,
-  } = createForm({
-    initialValues,
-    validationSchema,
-    validate,
-    onSubmit,
-  });
+  } = createdForm;
 
   setContext(key, {
     form,
