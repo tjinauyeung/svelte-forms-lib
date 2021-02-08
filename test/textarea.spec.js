@@ -7,7 +7,7 @@ const defaultProps = {
   initialValues: {
     description: '',
   },
-  ['onSubmit']: () => {},
+  onSubmit() {},
 };
 
 const render = (ui, props = defaultProps) => {
@@ -25,14 +25,40 @@ describe('Textarea', () => {
       </>,
       props,
     );
-
     const textarea = getByLabelText(label);
-    expect(textarea.value.trim()).toBe(props.initialValues.description);
-
     const value = 'foo';
+
+    expect(textarea.value.trim()).toBe(props.initialValues.description);
 
     await fireEvent.change(textarea, {target: {value}});
 
     expect(textarea.value).toContain(value);
+  });
+
+  test('-> changed value is in submitted values', async () => {
+    const label = 'description';
+    const submitSpy = jest.fn();
+    const values = {[label]: ''};
+    const props = {initialValues: {...values}, onSubmit: submitSpy};
+    const {getByLabelText, getByRole} = render(
+      <>
+        <label for={label}>{label}</label>
+        <Textarea id={label} name={label} />
+
+        <button type="submit">submit</button>
+      </>,
+      props,
+    );
+
+    const textarea = getByLabelText(label);
+    const submitButton = getByRole('button');
+    const newValue = 'foo';
+
+    await fireEvent.change(textarea, {target: {value: newValue}});
+    await fireEvent.click(submitButton);
+
+    await waitFor(() =>
+      expect(submitSpy.mock.calls[0][0]).toHaveProperty(label, newValue),
+    );
   });
 });
