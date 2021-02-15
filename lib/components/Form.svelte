@@ -3,50 +3,21 @@
   import {createForm} from '../create-form';
   import {key} from './key';
 
-  export let createdForm = createForm({
+  export let initialValues = {};
+  export let validate = null;
+  export let validationSchema = null;
+  export let onSubmit;
+
+  export let context = createForm({
     initialValues,
     validationSchema,
     validate,
     onSubmit,
   });
 
-  export let initialValues = {};
-  export let validate = null;
-  export let validationSchema = null;
-  export let onSubmit;
-
-  const {
-    form,
-    errors,
-    touched,
-    state,
-    handleChange,
-    handleSubmit,
-    updateField,
-    updateTouched,
-  } = createdForm;
-
-  setContext(key, {
-    form,
-    errors,
-    touched,
-    state,
-    handleChange,
-    handleSubmit,
-    updateField,
-    updateTouched,
-  });
+  setContext(key, context);
 </script>
 
-<form on:submit={handleSubmit} {...$$restProps}>
-  <slot
-    {form}
-    {errors}
-    {touched}
-    {state}
-    {handleChange}
-    {handleSubmit}
-    {updateField}
-    {updateTouched}
-  />
+<form on:submit={context.handleSubmit} {...$$restProps}>
+  <slot {...context} />
 </form>
