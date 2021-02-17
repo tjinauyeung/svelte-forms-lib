@@ -1,48 +1,34 @@
+/// <reference path="svelte-jsx.d.ts" />
 import type {SvelteComponentTyped} from 'svelte';
 import type {Readable, Writable} from 'svelte/store';
 import type {ObjectSchema} from 'yup';
 
-/**
- * Unfortunately svelte currently does not support generics in components so we export it to use it in scripts like this
- *
- * const formProps: FormProps = {
- *  intitialValues: {...},
- *  onSubmit: values => {...} -> values will be inffered from initialValues
- * }
- *
- * */
-export type FormProps<Inf = Record<string, unknown>> = {
+export type FormProps<Inf = Record<string, any>> = {
   initialValues: Inf;
   onSubmit: ((values: Inf) => any) | ((values: Inf) => Promise<any>);
   validate?: (values: Inf) => any | undefined;
   validationSchema?: ObjectSchema<any>;
-}
+} & svelte.JSX.HTMLAttributes<HTMLFormElement>;
 
 type FieldProps = {
   name: string;
   type?: string;
   value?: string;
-};
+} & svelte.JSX.HTMLProps<HTMLInputElement>;
 
 type SelectProps = {
   name: string;
-  class?: string;
-  value?: string;
-};
+} & svelte.JSX.HTMLProps<HTMLSelectElement>;
 
 type ErrorProps = {
   name: string;
-  class?: string;
-};
+} & svelte.JSX.HTMLProps<HTMLDivElement>;
 
 type TextareaProps = {
   name: string;
-  class?: string;
-  cols?: number;
-  rows?: number;
-};
+} & svelte.JSX.HTMLProps<HTMLTextAreaElement>;
 
-type FormState<Inf = Record<string, unknown>> = {
+type FormState<Inf = Record<string, any>> = {
   form: Writable<Inf>;
   errors: Writable<Record<keyof Inf, string>>;
   touched: Writable<Record<keyof Inf, boolean>>;
@@ -71,7 +57,7 @@ type FormState<Inf = Record<string, unknown>> = {
   handleSubmit: () => any;
 };
 
-declare function createForm<Inf = Record<string, unknown>>(formProps: {
+declare function createForm<Inf = Record<string, any>>(formProps: {
   initialValues: Inf;
   onSubmit: (values: Inf) => any | Promise<any>;
   validate?: (values: Inf) => any | undefined;
@@ -79,22 +65,10 @@ declare function createForm<Inf = Record<string, unknown>>(formProps: {
 }): FormState<Inf>;
 
 declare class Form extends SvelteComponentTyped<
-  FormProps & {
-    class?: string;
-  },
+  FormProps,
   {},
   {
-    default: Pick<
-      FormState,
-      | 'errors'
-      | 'touched'
-      | 'updateField'
-      | 'updateTouched'
-      | 'handleChange'
-      | 'handleSubmit'
-      | 'form'
-      | 'state'
-    >;
+    default: FormState;
   }
 > {}
 
