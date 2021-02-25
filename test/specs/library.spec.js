@@ -1,7 +1,8 @@
 /* globals beforeEach, console, describe, expect, it, require, jest */
-const {createForm} = require('../lib');
 const yup = require('yup');
 const Chance = require('chance');
+
+const {createForm} = require('../../lib');
 
 const chance = new Chance();
 

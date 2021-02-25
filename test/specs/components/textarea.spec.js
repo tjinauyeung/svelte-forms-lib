@@ -1,7 +1,7 @@
 import {render as renderTl, fireEvent, waitFor} from '@testing-library/svelte';
 
-import Form from '../lib/components/Form.svelte';
-import Textarea from '../lib/components/Textarea.svelte';
+import Form from 'lib/components/Form.svelte';
+import Textarea from 'lib/components/Textarea.svelte';
 
 const defaultProps = {
   initialValues: {

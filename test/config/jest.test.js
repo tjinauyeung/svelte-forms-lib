@@ -7,7 +7,11 @@ module.exports = {
 
   moduleFileExtensions: ['js', 'svelte'],
 
-  testMatch: ['<rootDir>/test/*.spec.js'],
+  moduleNameMapper: {
+    '^lib/(.*)': '<rootDir>/lib/$1',
+  },
+
+  testMatch: ['<rootDir>/test/specs/**/*.spec.js'],
 
   transform: {
     '^.+\\.svelte$': 'svelte-jester',
