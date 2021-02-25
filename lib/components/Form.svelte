@@ -16,7 +16,10 @@
     handleChange,
     handleSubmit,
     updateField,
+    updateInitialValues,
     updateTouched,
+    updateValidateField,
+    validateField,
   } = createForm({
     initialValues,
     validationSchema,
@@ -32,7 +35,10 @@
     handleChange,
     handleSubmit,
     updateField,
+    updateInitialValues,
     updateTouched,
+    updateValidateField,
+    validateField,
   });
 </script>
 
@@ -45,6 +51,9 @@
     {handleChange}
     {handleSubmit}
     {updateField}
+    {updateInitialValues}
     {updateTouched}
+    {updateValidateField}
+    {validateField}
   />
 </form>
