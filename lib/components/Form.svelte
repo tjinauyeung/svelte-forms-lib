@@ -6,7 +6,17 @@
   export let initialValues = {};
   export let validate = null;
   export let validationSchema = null;
-  export let onSubmit;
+  export let onSubmit = () => {
+    throw new Error(
+      'onSubmit is a required property in <Form /> when using the fallback context',
+    );
+  };
+  export let context = createForm({
+    initialValues,
+    onSubmit,
+    validate,
+    validationSchema,
+  });
 
   const {
     form,
@@ -20,12 +30,7 @@
     updateTouched,
     updateValidateField,
     validateField,
-  } = createForm({
-    initialValues,
-    validationSchema,
-    validate,
-    onSubmit,
-  });
+  } = context;
 
   setContext(key, {
     form,
