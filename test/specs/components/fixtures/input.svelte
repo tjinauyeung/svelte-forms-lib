@@ -5,7 +5,7 @@
   export let field;
 
   const context = getContext(key);
-  const form = context.form;
+  const {form} = context;
 </script>
 
 <label for={field}>
