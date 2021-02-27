@@ -1,7 +1,7 @@
 import {render, fireEvent, waitFor} from '@testing-library/svelte';
-import {writable, get as svelteGet} from 'svelte/store';
 
 import Input from './fixtures/input.svelte';
+import StoreContextInspector from './fixtures/store-context-inspector.svelte';
 
 import Form from 'lib/components/Form.svelte';
 
@@ -10,58 +10,106 @@ const defaultProps = {
   onSubmit() {},
 };
 
-const get = (store) => {
-  /**
-   * not sure why we need to invoke `get` twice, but we do
-   */
-  return svelteGet(svelteGet(store));
-};
-
 describe('Form', () => {
-  test('-> exposes `form` prop via slot properties', async () => {
+  test('-> exposes `form` store to children via context', async () => {
     const inputId = 'foo';
     const props = {
       ...defaultProps,
       initialValues: {[inputId]: ''},
     };
-    let form = writable({});
-    const {getByLabelText} = render(
-      <Form {...props} let_form={form}>
+    const {getByLabelText, getByTestId} = render(
+      <Form {...props}>
         <Input field={inputId} />
+
+        <StoreContextInspector data-testid="values" storeProp="form" />
       </Form>,
     );
     const input = getByLabelText(inputId);
+    const valuesEl = getByTestId('values');
+    let values = JSON.parse(valuesEl.textContent);
 
-    expect(get(form)).toHaveProperty('foo', '');
+    expect(values[inputId]).toBe(props.initialValues[inputId]);
+    expect(input.value).toBe(values[inputId]);
 
     const value = 'bar';
 
     await fireEvent.input(input, {target: {value}});
 
-    expect(get(form)).toHaveProperty('foo', value);
+    values = JSON.parse(valuesEl.textContent);
+
+    expect(values[inputId]).toBe(value);
+    expect(input.value).toBe(value);
   });
 
-  test('-> exposes `state` prop via slot properties', async () => {
+  test('-> exposes `state` store to children via context', async () => {
     const inputId = 'foo';
     const props = {
       ...defaultProps,
       initialValues: {[inputId]: ''},
     };
-    let state = writable({});
-    const {getByLabelText} = render(
-      <Form {...props} let_state={state}>
+    const {getByLabelText, getByTestId} = render(
+      <Form {...props}>
         <Input field={inputId} />
+
+        <StoreContextInspector data-testid="state" storeProp="state" />
       </Form>,
     );
     const input = getByLabelText(inputId);
+    const stateEl = getByTestId('state');
+    let state = JSON.parse(stateEl.textContent);
 
-    expect(get(state)).toHaveProperty('isModified', false);
+    expect(state).toHaveProperty('isModified', false);
 
     const value = 'bar';
 
     await fireEvent.input(input, {target: {value}});
 
-    expect(get(state)).toHaveProperty('isModified', true);
+    state = JSON.parse(stateEl.textContent);
+    expect(state).toHaveProperty('isModified', true);
+  });
+
+  test('-> exposes `errors` store to children via context', async () => {
+    const inputId = 'foo';
+    const validationError = `${inputId} is required`;
+    const props = {
+      initialValues: {[inputId]: ''},
+      validate: (values) => {
+        if (!values[inputId]) {
+          return {[inputId]: validationError};
+        }
+      },
+    };
+    const {getByTestId, getByLabelText, getByRole} = render(
+      <Form {...props}>
+        <Input field={inputId} />
+        <StoreContextInspector data-testid="error" storeProp="errors" />
+
+        <button type="submit">submit</button>
+      </Form>,
+    );
+    const input = getByLabelText(inputId);
+    const button = getByRole('button');
+    const errorEl = getByTestId('error');
+    let errors = JSON.parse(errorEl.textContent);
+
+    expect(errors).toHaveProperty(inputId, '');
+
+    await fireEvent.click(button);
+
+    await waitFor(() => {
+      errors = JSON.parse(errorEl.textContent);
+      expect(errors).toHaveProperty(inputId, validationError);
+    });
+
+    const value = 'bar';
+
+    await fireEvent.input(input, {target: {value}});
+    await fireEvent.click(button);
+
+    await waitFor(() => {
+      errors = JSON.parse(errorEl.textContent);
+      expect(errors).toHaveProperty(inputId, '');
+    });
   });
 
   test.each`
