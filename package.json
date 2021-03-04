@@ -7,8 +7,10 @@
     "start": "rollup -c -w rollup.config.js",
     "build": "cross-env NODE_ENV=production && rollup -c rollup.config.js",
     "prepare": "npm run build",
-    "test": "jest",
+    "test": "jest && npm run svelte-check",
     "test:watch": "jest --watchAll",
+    "svelte-check:watch": "svelte-check --watch --output=human-verbose",
+    "svelte-check": "svelte-check --fail-on-warnings --output=human-verbose",
     "format": "prettier --write lib/**/*.{js,svelte}",
     "commit": "git-cz"
   },
