@@ -3,7 +3,10 @@ import resolve from 'rollup-plugin-node-resolve';
 import svelte from 'rollup-plugin-svelte';
 import typescript from '@rollup/plugin-typescript';
 
-import svelteConfig from './svelte.config';
+/**
+ * Jest requires a CommonJs import
+ */
+const svelteConfig = require('./svelte.config');
 
 export default {
   input: './lib/index.js',
