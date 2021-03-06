@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import {setContext} from 'svelte';
   import {createForm} from '../create-form';
   import {key} from './key';

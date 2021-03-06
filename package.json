@@ -8,17 +8,27 @@
     "build": "cross-env NODE_ENV=production && rollup -c rollup.config.js",
     "prepare": "npm run build",
     "test": "jest && npm run svelte-check",
-    "test:watch": "jest --watchAll",
+    "test:watch": "concurrently \"jest --watchAll\" npm:svelte-check:watch",
     "svelte-check:watch": "svelte-check --watch --output=human-verbose",
     "svelte-check": "svelte-check --fail-on-warnings --output=human-verbose",
     "format": "prettier --write lib/**/*.{js,svelte}",
     "commit": "git-cz"
   },
-  "files": ["build/*", "lib/*"],
+  "files": [
+    "build/*",
+    "lib/*"
+  ],
   "svelte": "./lib/index.js",
   "author": "Tjin Au Yeung",
-  "browserslist": ["last 1 chrome versions"],
-  "keywords": ["svelte", "forms", "validation", "form-validation"],
+  "browserslist": [
+    "last 1 chrome versions"
+  ],
+  "keywords": [
+    "svelte",
+    "forms",
+    "validation",
+    "form-validation"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/tjinauyeung/svelte-forms-lib"
@@ -35,6 +45,7 @@
     "@babel/preset-env": "^7.12.11",
     "@commitlint/cli": "^11.0.0",
     "@commitlint/config-conventional": "^11.0.0",
+    "@rollup/plugin-typescript": "^8.2.0",
     "@testing-library/jest-dom": "^5.11.9",
     "@testing-library/svelte": "^3.0.3",
     "@types/chance": "1.1.1",
@@ -42,6 +53,7 @@
     "@types/yup": "0.29.11",
     "chance": "1.1.7",
     "commitizen": "^4.2.3",
+    "concurrently": "^6.0.0",
     "cross-env": "^7.0.3",
     "cz-conventional-changelog": "^3.3.0",
     "eslint": "^7.18.0",
@@ -65,6 +77,8 @@
     "svelte-fragment-component": "^1.2.0",
     "svelte-jester": "^1.3.0",
     "svelte-jsx": "^2.0.0",
+    "svelte-preprocess": "^4.6.9",
+    "typescript": "^4.2.3",
     "yup": "0.32.8"
   },
   "config": {

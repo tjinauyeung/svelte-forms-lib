@@ -14,7 +14,7 @@ module.exports = {
   testMatch: ['<rootDir>/test/specs/**/*.spec.js'],
 
   transform: {
-    '^.+\\.svelte$': 'svelte-jester',
+    '^.+\\.svelte$': ['svelte-jester', {preprocess: true}],
     /**
      * transform any svelte components in node_modules with svelte-jester
      */
