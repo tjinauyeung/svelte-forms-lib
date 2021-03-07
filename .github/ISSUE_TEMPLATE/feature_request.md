@@ -42,7 +42,7 @@ The user should be able to use form/context/input with svelte-forms-lib to <perf
 
 ### Proposal
 
-<!-- How are we going to solve the problem? Try to include the user journey! https://about.gitlab.com/handbook/journeys/#user-journey -->
+<!-- How are we going to solve the problem? -->
 
 
 ### Further details
