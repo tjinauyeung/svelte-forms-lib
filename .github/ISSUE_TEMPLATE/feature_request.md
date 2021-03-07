@@ -2,19 +2,58 @@
 name: Feature request
 about: Suggest an idea for this project
 title: ''
-labels: ''
+labels: enhancement
 assignees: ''
 
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+<!--
+What is the problem and solution you're proposing? This content sets the overall vision
+for the feature.
+-->
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+### Problem to solve
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+<!--
+What problem do we solve? Try to define the who/what/why of the feature as a user
+story. For example, "As a (who), I want (what), so I can (why/value)."
+-->
+
+
+### Intended users
+
+<!--
+Who will use this feature? If known, include any of the following: types of users
+(e.g. Developer, Application user).
+-->
+
+
+### User experience goal
+
+<!--
+What is the single user experience workflow this problem addresses?
+
+For example:
+
+The user should be able to use form/context/input with svelte-forms-lib to <perform a specific task>
+-->
+
+
+### Proposal
+
+<!-- How are we going to solve the problem? Try to include the user journey! https://about.gitlab.com/handbook/journeys/#user-journey -->
+
+
+### Further details
+
+<!-- Include use cases, benefits, goals, or any other details that will help us understand the problem better. -->
+
+
+### Documentation
+
+<!-- Add all known Documentation Requirements in this section.  -->
+
+
+### Links / references
+
