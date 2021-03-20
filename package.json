@@ -35,7 +35,10 @@
   },
   "homepage": "https://svelte-forms-lib-sapper-docs.now.sh",
   "main": "./build/index.js",
-  "module": "./build/index.mjs",
+  "module": "./build/esm/index.js",
+  "exports": {
+    ".": "./build/esm/index.js"
+  },
   "license": "MIT",
   "dependencies": {
     "dequal": "^2.0.2"
