@@ -14,31 +14,18 @@
     "format": "prettier --write lib/**/*.{js,svelte}",
     "commit": "git-cz"
   },
-  "files": [
-    "build/*",
-    "lib/*"
-  ],
+  "files": ["build/*", "lib/*"],
   "svelte": "./lib/index.js",
   "author": "Tjin Au Yeung",
-  "browserslist": [
-    "last 1 chrome versions"
-  ],
-  "keywords": [
-    "svelte",
-    "forms",
-    "validation",
-    "form-validation"
-  ],
+  "browserslist": ["last 1 chrome versions"],
+  "keywords": ["svelte", "forms", "validation", "form-validation"],
   "repository": {
     "type": "git",
     "url": "https://github.com/tjinauyeung/svelte-forms-lib"
   },
   "homepage": "https://svelte-forms-lib-sapper-docs.now.sh",
   "main": "./build/index.js",
-  "module": "./build/esm/index.js",
-  "exports": {
-    ".": "./build/esm/index.js"
-  },
+  "module": "./build/index.mjs",
   "license": "MIT",
   "dependencies": {
     "dequal": "^2.0.2"
