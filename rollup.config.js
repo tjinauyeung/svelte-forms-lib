@@ -12,7 +12,7 @@ export default {
   input: './lib/index.js',
   output: [
     {
-      file: `./build/esm/index.js`,
+      file: `./build/index.mjs`,
       format: 'esm',
       paths: (id) => id.startsWith('svelte/') && `${id.replace('svelte', '.')}`,
     },
