@@ -1,8 +1,8 @@
-<script lang="ts">
+<script>
   import {getContext} from 'svelte';
   import {key} from './key';
 
-  export let name: string;
+  export let name;
   export let type = 'text';
 
   const {form, handleChange} = getContext(key);
