@@ -255,6 +255,66 @@ describe('createForm', () => {
         })
         .then(done);
     });
+
+    it('is false for invalid arrays', async done => {
+      const validationSchema = yup
+	.array()
+	.of(yup.object().shape({x: yup.string().required()}).required());
+      const initialValues = [{x: ''}];
+      const formInstance = getInstance({validationSchema, initialValues});
+
+      formInstance
+	.handleSubmit()
+	.then(() => subscribeOnce(formInstance.isValid))
+	.then(isValid => expect(isValid).toBe(false))
+	.then(done);
+    });
+
+    it('is true for valid arrays', async done => {
+      const validationSchema = yup
+	.array()
+	.of(yup.object().shape({x: yup.string().required()}).required());
+      const initialValues = [{x: 'foo'}];
+      const formInstance = getInstance({validationSchema, initialValues});
+
+      formInstance
+	.handleSubmit()
+	.then(() => subscribeOnce(formInstance.isValid))
+	.then(isValid => expect(isValid).toBe(true))
+	.then(done);
+    });
+
+    it('is false for invalid nested arrays', async done => {
+      const validationSchema = yup.object().shape({
+	xs: yup
+	  .array()
+	  .of(yup.object().shape({x: yup.string().required()}).required()),
+      });
+      const initialValues = {xs: [{x: ''}]};
+      const formInstance = getInstance({validationSchema, initialValues});
+
+      formInstance
+	.handleSubmit()
+	.then(() => subscribeOnce(formInstance.isValid))
+	.then(isValid => expect(isValid).toBe(false))
+	.then(done);
+    });
+
+    it('is true for valid nested arrays', async done => {
+      const validationSchema = yup.object().shape({
+	xs: yup
+	  .array()
+	  .of(yup.object().shape({x: yup.string().required()}).required()),
+      });
+      const initialValues = {xs: [{x: 'bar'}]};
+      const formInstance = getInstance({validationSchema, initialValues});
+
+      formInstance
+	.handleSubmit()
+	.then(() => subscribeOnce(formInstance.isValid))
+	.then(isValid => expect(isValid).toBe(true))
+	.then(done);
+    });
   });
 
   describe('handleReset', () => {
