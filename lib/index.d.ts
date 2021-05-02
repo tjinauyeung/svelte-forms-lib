@@ -1,11 +1,12 @@
-/// <reference path="svelte-jsx.d.ts" />
+/// <reference lib="svelte2tsx" />
 import type {SvelteComponentTyped} from 'svelte';
 import type {Readable, Writable} from 'svelte/store';
 import type {ObjectSchema} from 'yup';
 
 export type FormProps<Inf = Record<string, any>> = {
-  initialValues: Inf;
-  onSubmit: ((values: Inf) => any) | ((values: Inf) => Promise<any>);
+  context?: FormState;
+  initialValues?: Inf;
+  onSubmit?: ((values: Inf) => any) | ((values: Inf) => Promise<any>);
   validate?: (values: Inf) => any | undefined;
   validationSchema?: ObjectSchema<any>;
 } & svelte.JSX.HTMLAttributes<HTMLFormElement>;
