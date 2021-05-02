@@ -14,11 +14,21 @@
     "format": "prettier --write lib/**/*.{js,svelte}",
     "commit": "git-cz"
   },
-  "files": ["build/*", "lib/*"],
+  "files": [
+    "build/*",
+    "lib/*"
+  ],
   "svelte": "./lib/index.js",
   "author": "Tjin Au Yeung",
-  "browserslist": ["last 1 chrome versions"],
-  "keywords": ["svelte", "forms", "validation", "form-validation"],
+  "browserslist": [
+    "last 1 chrome versions"
+  ],
+  "keywords": [
+    "svelte",
+    "forms",
+    "validation",
+    "form-validation"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/tjinauyeung/svelte-forms-lib"
@@ -68,6 +78,7 @@
     "svelte-jester": "^1.3.0",
     "svelte-jsx": "^2.0.0",
     "svelte-preprocess": "^4.6.9",
+    "svelte2tsx": "^0.1.189",
     "typescript": "^4.2.3",
     "yup": "0.32.8"
   },
