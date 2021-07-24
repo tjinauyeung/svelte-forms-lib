@@ -488,7 +488,7 @@ describe('createForm', () => {
     });
   });
 
-  it('validateFn handles nested values', done => {
+  it('validateFn handles nested values on submit', done => {
     const errorMessage = 'this field is invalid';
     const instance = createForm({
       initialValues: {
