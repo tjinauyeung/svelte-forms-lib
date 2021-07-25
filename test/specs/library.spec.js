@@ -488,6 +488,33 @@ describe('createForm', () => {
     });
   });
 
+  it('validateFn handles nested values on submit', done => {
+    const errorMessage = 'this field is invalid';
+    const instance = createForm({
+      initialValues: {
+        nested: {
+          foo: '',
+        },
+      },
+      validate: values => {
+        let errs = {
+          nested: {}
+        };
+        if (values.nested.foo === '') {
+          errs.nested.foo = errorMessage;
+        }
+        return errs;
+      },
+      onSubmit: values => console.log(values),
+    });
+
+    instance
+      .handleSubmit()
+      .then(() => subscribeOnce(instance.errors))
+      .then(errors => expect(errors.nested.foo).toBe(errorMessage))
+      .then(done);
+  });
+
   describe('handleSubmit', () => {
     it('validates form on submit when validationSchema is provided', async done => {
       instance = getInstance({
