@@ -6,7 +6,7 @@
   "scripts": {
     "start": "rollup -c -w rollup.config.js",
     "build": "cross-env NODE_ENV=production && rollup -c rollup.config.js",
-    "prepare": "npm run build",
+    "prepare": "npm run build && husky install",
     "test": "jest && npm run svelte-check",
     "test:watch": "concurrently \"jest --watchAll\" npm:svelte-check:watch",
     "svelte-check:watch": "svelte-check --watch --output=human-verbose",
@@ -59,7 +59,7 @@
     "eslint": "^7.31.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-unicorn": "^34.0.1",
-    "husky": "7.0.1",
+    "husky": "^7.0.0",
     "jest": "^26.6.3",
     "jest-runner-eslint": "^0.10.1",
     "jest-watch-select-projects": "^2.0.0",
