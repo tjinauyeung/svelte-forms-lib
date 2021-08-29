@@ -7,11 +7,11 @@ const {createForm} = require('../../lib');
 const chance = new Chance();
 
 function nonEmpty(array) {
-  return array.filter(string => string !== '');
+  return array.filter((string) => string !== '');
 }
 
 function subscribeOnce(observable) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     observable.subscribe(resolve)(); // immediately invoke to unsubscribe
   });
 }
@@ -57,7 +57,7 @@ describe('createForm', () => {
     });
 
     it('contains the current values which are accessed by subscription', () => {
-      subscribeOnce(instance.form).then(values => {
+      subscribeOnce(instance.form).then((values) => {
         expect(values.name).toBe(initialValues.name);
         expect(values.email).toBe(initialValues.email);
         expect(values.country).toBe(initialValues.country);
@@ -86,7 +86,7 @@ describe('createForm', () => {
         expect($errors.nested.foo).toBe('');
       });
 
-      it('does not initialise initialValues not defined in schema', async () => {
+      it('ignores properties in initialValues not defined in schema', async () => {
         const initialValues = {notInSchema: ''};
         const validationSchema = yup
           .object()
@@ -97,8 +97,22 @@ describe('createForm', () => {
         expect($errors.notInSchema).toBeUndefined();
       });
 
+      it('preserves number of initial values for array of fields', async () => {
+        const initialValues = {xs: [{name: 'foo'}, {name: 'bar'}]};
+        const validationSchema = yup.object().shape({
+          xs: yup
+            .array()
+            .of(yup.object().shape({name: yup.string().required()})),
+        });
+        const instance = getInstance({initialValues, validationSchema});
+        const $errors = await subscribeOnce(instance.errors);
+        const $form = await subscribeOnce(instance.form);
+
+        expect($errors.xs.length).toEqual($form.xs.length);
+      });
+
       it('contains an empty array when initialValues property is empty', async () => {
-        const initialValues = {foo: []};
+        const initialValues = {};
         const validationSchema = yup.object().shape({
           stringArray: yup.array().of(yup.string().required()),
           objectArray: yup
@@ -120,18 +134,67 @@ describe('createForm', () => {
         expect($errors.nested.foo).toEqual([]);
       });
 
-      it('preserves number of initial values for array properties', async () => {
-        const initialValues = {foo: [{name: 'foo'}, {name: 'bar'}]};
+      it('contains errors for invalid object', async () => {
+        const initialValues = {foo: '', nested: {foo: ''}};
+        const requiredError = 'field required';
         const validationSchema = yup.object().shape({
-          foo: yup
-            .array()
-            .of(yup.object().shape({name: yup.string().required()})),
+          foo: yup.string().required(requiredError),
+          nested: yup
+            .object()
+            .shape({foo: yup.string().required(requiredError)}),
         });
         const instance = getInstance({initialValues, validationSchema});
-        const $errors = await subscribeOnce(instance.errors);
-        const $form = await subscribeOnce(instance.form);
 
-        expect($errors.foo.length).toEqual($form.foo.length);
+        await instance.handleSubmit();
+
+        const $errors = await subscribeOnce(instance.errors);
+
+        expect($errors.foo).toBe(requiredError);
+        expect($errors.nested.foo).toBe(requiredError);
+      });
+
+      it('generates error as string for invalid array', async () => {
+        const initialValues = {xs: []};
+        const minError = 'min error';
+        const validationSchema = yup
+          .object()
+          .shape({xs: yup.array().of(yup.string()).min(1, minError)});
+        const instance = getInstance({initialValues, validationSchema});
+
+        await instance.handleSubmit();
+
+        const $errors = await subscribeOnce(instance.errors);
+
+        expect($errors.xs).toBe(minError);
+      });
+
+      it('generates arrays of errors when invalid items in arrays', async () => {
+        const validValue = 'valid';
+        const invalidValue = {invalid: ''};
+        const initialValues = {
+          // non-primitive values
+          xs: [{foo: validValue}, {foo: invalidValue}],
+          // primitive values
+          ys: [validValue, invalidValue],
+        };
+        const typeError = 'type error';
+        const validationSchema = yup.object().shape({
+          xs: yup
+            .array()
+            .of(yup.object().shape({foo: yup.string().typeError(typeError)})),
+          ys: yup.array().of(yup.string().typeError(typeError)),
+        });
+        const instance = getInstance({initialValues, validationSchema});
+
+        await instance.handleSubmit();
+
+        const $errors = await subscribeOnce(instance.errors);
+
+        expect($errors.xs.length).toBe(initialValues.xs.length);
+        expect($errors.xs[0].foo).toBe('');
+        expect($errors.xs[1].foo).toBe(typeError);
+        expect($errors.ys[0]).toBe('');
+        expect($errors.ys[1]).toBe(typeError);
       });
     });
   });
@@ -141,8 +204,8 @@ describe('createForm', () => {
       expect(instance.errors.subscribe).toBeDefined();
     });
 
-    it('contains the current values which are accessed by subscription', done => {
-      subscribeOnce(instance.touched).then(touched => {
+    it('contains the current values which are accessed by subscription', (done) => {
+      subscribeOnce(instance.touched).then((touched) => {
         expect(touched.name).toBe(false);
         expect(touched.email).toBe(false);
         expect(touched.country).toBe(false);
@@ -201,22 +264,21 @@ describe('createForm', () => {
       });
       let $modified;
 
-      await instance.handleChange(nameEvent);
-      const $form = await subscribeOnce(instance.form);
+      instance.handleChange(nameEvent);
       $modified = await subscribeOnce(instance.modified);
 
       expect($modified.name).toBe(true);
       expect($modified.address).toBe(false);
       expect($modified.xs).toBe(false);
 
-      await instance.handleChange(streetEvent);
+      instance.handleChange(streetEvent);
       $modified = await subscribeOnce(instance.modified);
 
       expect($modified.name).toBe(true);
       expect($modified.address).toBe(true);
       expect($modified.xs).toBe(false);
 
-      await instance.handleChange(xEvent);
+      instance.handleChange(xEvent);
       $modified = await subscribeOnce(instance.modified);
 
       expect($modified.name).toBe(true);
@@ -230,17 +292,17 @@ describe('createForm', () => {
       expect(instance.isValid.subscribe).toBeDefined();
     });
 
-    it('returns true if form is valid', async done => {
+    it('returns true if form is valid', async (done) => {
       instance
         .handleSubmit()
         .then(() => subscribeOnce(instance.isValid))
-        .then(isValid => {
+        .then((isValid) => {
           expect(isValid).toBe(true);
         })
         .then(done);
     });
 
-    it('returns false if form is invalid', async done => {
+    it('returns false if form is invalid', async (done) => {
       await instance.form.set({
         name: '',
         email: '',
@@ -250,13 +312,13 @@ describe('createForm', () => {
       instance
         .handleSubmit()
         .then(() => subscribeOnce(instance.isValid))
-        .then(isValid => {
+        .then((isValid) => {
           expect(isValid).toBe(false);
         })
         .then(done);
     });
 
-    it('is false for invalid arrays', async done => {
+    it('is false for invalid arrays', async (done) => {
       const validationSchema = yup
         .array()
         .of(yup.object().shape({x: yup.string().required()}).required());
@@ -266,11 +328,11 @@ describe('createForm', () => {
       formInstance
         .handleSubmit()
         .then(() => subscribeOnce(formInstance.isValid))
-        .then(isValid => expect(isValid).toBe(false))
+        .then((isValid) => expect(isValid).toBe(false))
         .then(done);
     });
 
-    it('is true for valid arrays', async done => {
+    it('is true for valid arrays', async (done) => {
       const validationSchema = yup
         .array()
         .of(yup.object().shape({x: yup.string().required()}).required());
@@ -280,11 +342,11 @@ describe('createForm', () => {
       formInstance
         .handleSubmit()
         .then(() => subscribeOnce(formInstance.isValid))
-        .then(isValid => expect(isValid).toBe(true))
+        .then((isValid) => expect(isValid).toBe(true))
         .then(done);
     });
 
-    it('is false for invalid nested arrays', async done => {
+    it('is false for invalid nested arrays', async (done) => {
       const validationSchema = yup.object().shape({
         xs: yup
           .array()
@@ -296,11 +358,11 @@ describe('createForm', () => {
       formInstance
         .handleSubmit()
         .then(() => subscribeOnce(formInstance.isValid))
-        .then(isValid => expect(isValid).toBe(false))
+        .then((isValid) => expect(isValid).toBe(false))
         .then(done);
     });
 
-    it('is true for valid nested arrays', async done => {
+    it('is true for valid nested arrays', async (done) => {
       const validationSchema = yup.object().shape({
         xs: yup
           .array()
@@ -312,7 +374,7 @@ describe('createForm', () => {
       formInstance
         .handleSubmit()
         .then(() => subscribeOnce(formInstance.isValid))
-        .then(isValid => expect(isValid).toBe(true))
+        .then((isValid) => expect(isValid).toBe(true))
         .then(done);
     });
   });
@@ -320,43 +382,43 @@ describe('createForm', () => {
   describe('handleReset', () => {
     it('resets form to initial state', () => {
       instance.form.set({name: 'foo'});
-      subscribeOnce(instance.form).then(values =>
+      subscribeOnce(instance.form).then((values) =>
         expect(values.name).toBe('foo'),
       );
 
       instance.handleReset();
-      subscribeOnce(instance.form).then(form =>
+      subscribeOnce(instance.form).then((form) =>
         expect(form.name).toBe(form.name),
       );
     });
 
     it('resets errors to initial state', () => {
       instance.errors.set({name: 'name is required'});
-      subscribeOnce(instance.errors).then(errors =>
+      subscribeOnce(instance.errors).then((errors) =>
         expect(errors.name).toBe('name is required'),
       );
 
       instance.handleReset();
-      subscribeOnce(instance.errors).then(errors =>
+      subscribeOnce(instance.errors).then((errors) =>
         expect(errors.name).toBe(''),
       );
     });
 
     it('resets touched to initial state', () => {
       instance.touched.set({name: true});
-      subscribeOnce(instance.touched).then(touched =>
+      subscribeOnce(instance.touched).then((touched) =>
         expect(touched.name).toBe(true),
       );
 
       instance.handleReset();
-      subscribeOnce(instance.touched).then(touched =>
+      subscribeOnce(instance.touched).then((touched) =>
         expect(touched.name).toBe(false),
       );
     });
   });
 
   describe('handleChange', () => {
-    it('updates the form when connected to change handler of input', async done => {
+    it('updates the form when connected to change handler of input', async (done) => {
       const email = chance.email();
       const event = {
         target: {
@@ -365,8 +427,8 @@ describe('createForm', () => {
         },
       };
 
-      await new Promise(resolve => {
-        subscribeOnce(instance.form).then(form => {
+      await new Promise((resolve) => {
+        subscribeOnce(instance.form).then((form) => {
           expect(form.email).toBe(initialValues.email);
 
           resolve();
@@ -376,11 +438,11 @@ describe('createForm', () => {
       instance
         .handleChange(event)
         .then(() => subscribeOnce(instance.form))
-        .then(form => expect(form.email).toBe(email))
+        .then((form) => expect(form.email).toBe(email))
         .then(done);
     });
 
-    it('uses checked value for checkbox inputs', done => {
+    it('uses checked value for checkbox inputs', (done) => {
       instance = getInstance({
         initialValues: {
           terms: false,
@@ -392,18 +454,18 @@ describe('createForm', () => {
       const event = {
         target: {
           name: 'terms',
-          getAttribute: type => 'checkbox',
+          getAttribute: () => 'checkbox',
           checked: true,
         },
       };
       instance
         .handleChange(event)
         .then(() => subscribeOnce(instance.form))
-        .then(form => expect(form.terms).toBe(true))
+        .then((form) => expect(form.terms).toBe(true))
         .then(done);
     });
 
-    it('runs field validation when validateSchema is provided', done => {
+    it('runs field validation when validateSchema is provided', (done) => {
       const invalid = 'invalid.email';
       const event = {
         target: {
@@ -415,13 +477,13 @@ describe('createForm', () => {
       instance
         .handleChange(event)
         .then(() => subscribeOnce(instance.errors))
-        .then(errors =>
+        .then((errors) =>
           expect(errors.email).toBe('email must be a valid email'),
         )
         .then(done);
     });
 
-    it('runs field validation when validateFn is provided', done => {
+    it('runs field validation when validateFn is provided', (done) => {
       const invalid = 'invalid.email';
       const event = {
         target: {
@@ -433,19 +495,19 @@ describe('createForm', () => {
         initialValues: {
           email: '',
         },
-        validate: values => {
+        validate: (values) => {
           let errs = {};
           if (values.email === 'invalid.email') {
             errs.email = 'this email is invalid';
           }
           return errs;
         },
-        onSubmit: values => console.log(values),
+        onSubmit: (values) => console.log(values),
       });
       instance
         .handleChange(event)
         .then(() => subscribeOnce(instance.errors))
-        .then(errors => expect(errors.email).toBe('this email is invalid'))
+        .then((errors) => expect(errors.email).toBe('this email is invalid'))
         .then(done);
     });
 
@@ -464,7 +526,7 @@ describe('createForm', () => {
       expect(() => instance.handleChange(event)).not.toThrow();
     });
 
-    it('assigns empty string to field if validateFn returns undefined', done => {
+    it('assigns empty string to field if validateFn returns undefined', (done) => {
       const value = 'email@email.com';
       const event = {
         target: {
@@ -476,19 +538,19 @@ describe('createForm', () => {
         initialValues: {
           email: '',
         },
-        validate: values => {},
-        onSubmit: values => console.log(values),
+        validate: () => {},
+        onSubmit: (values) => console.log(values),
       });
 
       instance
         .handleChange(event)
         .then(() => subscribeOnce(instance.errors))
-        .then(errors => expect(errors.email).toBe(''))
+        .then((errors) => expect(errors.email).toBe(''))
         .then(done);
     });
   });
 
-  it('validateFn handles nested values on submit', done => {
+  it('validateFn handles nested values on submit', (done) => {
     const errorMessage = 'this field is invalid';
     const instance = createForm({
       initialValues: {
@@ -496,27 +558,27 @@ describe('createForm', () => {
           foo: '',
         },
       },
-      validate: values => {
+      validate: (values) => {
         let errs = {
-          nested: {}
+          nested: {},
         };
         if (values.nested.foo === '') {
           errs.nested.foo = errorMessage;
         }
         return errs;
       },
-      onSubmit: values => console.log(values),
+      onSubmit: (values) => console.log(values),
     });
 
     instance
       .handleSubmit()
       .then(() => subscribeOnce(instance.errors))
-      .then(errors => expect(errors.nested.foo).toBe(errorMessage))
+      .then((errors) => expect(errors.nested.foo).toBe(errorMessage))
       .then(done);
   });
 
   describe('handleSubmit', () => {
-    it('validates form on submit when validationSchema is provided', async done => {
+    it('validates form on submit when validationSchema is provided', async (done) => {
       instance = getInstance({
         initialValues: {
           name: '',
@@ -525,7 +587,7 @@ describe('createForm', () => {
         },
       });
 
-      subscribeOnce(instance.errors).then(errors => {
+      subscribeOnce(instance.errors).then((errors) => {
         const errorValues = nonEmpty(Object.values(errors));
         expect(errorValues.length).toBe(0);
       });
@@ -533,10 +595,10 @@ describe('createForm', () => {
       await instance
         .handleSubmit()
         .then(() => subscribeOnce(instance.errors))
-        .then(errors => nonEmpty(Object.values(errors)))
-        .then(errors => expect(errors.length).toBe(3));
+        .then((errors) => nonEmpty(Object.values(errors)))
+        .then((errors) => expect(errors.length).toBe(3));
 
-      await instance.form.set({
+      instance.form.set({
         name: chance.name(),
         email: '',
         country: '',
@@ -545,17 +607,17 @@ describe('createForm', () => {
       instance
         .handleSubmit()
         .then(() => subscribeOnce(instance.errors))
-        .then(errors => nonEmpty(Object.values(errors)))
-        .then(errors => expect(errors.length).toBe(2))
+        .then((errors) => nonEmpty(Object.values(errors)))
+        .then((errors) => expect(errors.length).toBe(2))
         .then(done);
     });
 
-    it('calls onSubmit when form is valid', done => {
+    it('calls onSubmit when form is valid', (done) => {
       instance = getInstance();
       instance.handleSubmit().then(expect(onSubmit).toBeCalled).then(done);
     });
 
-    it('does not call onSubmit when form is invalid', done => {
+    it('does not call onSubmit when form is invalid', (done) => {
       const onSubmit = jest.fn();
       // create invalid form
       instance = getInstance({
@@ -576,13 +638,13 @@ describe('createForm', () => {
       expect(formValue.email).toBe(initialValues.email);
       expect(formValue.country).toBe(initialValues.country);
 
-      subscribeOnce($form).then(form => {
+      subscribeOnce($form).then((form) => {
         expect(form.name).toBe(initialValues.name);
         expect(form.email).toBe(initialValues.email);
         expect(form.country).toBe(initialValues.country);
       });
 
-      subscribeOnce($errors).then(errors => {
+      subscribeOnce($errors).then((errors) => {
         expect(errors.name).toBe('');
         expect(errors.email).toBe('');
         expect(errors.country).toBe('');
@@ -591,7 +653,7 @@ describe('createForm', () => {
   });
 
   describe('validateField', () => {
-    it('validate a field only by name', done => {
+    it('validate a field only by name', (done) => {
       instance = getInstance({
         initialValues: {
           name: '',
@@ -600,7 +662,7 @@ describe('createForm', () => {
         },
       });
 
-      subscribeOnce(instance.errors).then(errors => {
+      subscribeOnce(instance.errors).then((errors) => {
         const errorValues = nonEmpty(Object.values(errors));
         expect(errorValues.length).toBe(0);
       });
@@ -608,13 +670,13 @@ describe('createForm', () => {
       instance
         .validateField('email')
         .then(() => subscribeOnce(instance.errors))
-        .then(errors => nonEmpty(Object.values(errors)))
-        .then(errors => expect(errors.length).toBe(1))
+        .then((errors) => nonEmpty(Object.values(errors)))
+        .then((errors) => expect(errors.length).toBe(1))
         .then(done);
     });
   });
   describe('updateValidateField', () => {
-    it('update and validate a single field', done => {
+    it('update and validate a single field', (done) => {
       instance = getInstance({
         initialValues: {
           name: '',
@@ -625,7 +687,7 @@ describe('createForm', () => {
 
       instance.errors.set({name: 'name is required'});
 
-      subscribeOnce(instance.errors).then(errors => {
+      subscribeOnce(instance.errors).then((errors) => {
         const errorValues = nonEmpty(Object.values(errors));
         expect(errorValues.length).toBe(1);
       });
@@ -633,8 +695,8 @@ describe('createForm', () => {
       instance
         .updateValidateField('name', 'name')
         .then(() => subscribeOnce(instance.errors))
-        .then(errors => nonEmpty(Object.values(errors)))
-        .then(errors => expect(errors.length).toBe(0))
+        .then((errors) => nonEmpty(Object.values(errors)))
+        .then((errors) => expect(errors.length).toBe(0))
         .then(done);
     });
   });
@@ -650,14 +712,14 @@ describe('createForm', () => {
       });
     });
 
-    it('when a is true, b is required', done => {
+    it('when a is true, b is required', (done) => {
       instance = getInstance({
         initialValues: {
           wantsSomething: true,
         },
       });
 
-      subscribeOnce(instance.errors).then(errors => {
+      subscribeOnce(instance.errors).then((errors) => {
         const errorValues = nonEmpty(Object.values(errors));
         expect(errorValues.length).toBe(0);
       });
@@ -665,7 +727,7 @@ describe('createForm', () => {
       instance
         .handleSubmit()
         .then(() => subscribeOnce(instance.errors))
-        .then(errors => {
+        .then((errors) => {
           const errorValues = nonEmpty(Object.values(errors));
           expect(errorValues.length).toBe(1);
           expect(errors.what).toBe('what is a required field');
@@ -673,14 +735,14 @@ describe('createForm', () => {
         .then(done);
     });
 
-    it('when a is false, b is not required', done => {
+    it('when a is false, b is not required', (done) => {
       instance = getInstance({
         initialValues: {
           wantsSomething: false,
         },
       });
 
-      subscribeOnce(instance.errors).then(errors => {
+      subscribeOnce(instance.errors).then((errors) => {
         const errorValues = nonEmpty(Object.values(errors));
         expect(errorValues.length).toBe(0);
       });
@@ -688,7 +750,7 @@ describe('createForm', () => {
       instance
         .handleSubmit()
         .then(() => subscribeOnce(instance.errors))
-        .then(errors => {
+        .then((errors) => {
           const errorValues = nonEmpty(Object.values(errors));
           expect(errorValues.length).toBe(0);
         })
@@ -702,11 +764,11 @@ describe('createForm', () => {
         password: yup.string().required(),
         passwordConfirmation: yup
           .string()
-          .oneOf([yup.ref('password'), null], "Passwords don't match!"),
+          .oneOf([yup.ref('password'), undefined], "Passwords don't match!"),
       });
     });
 
-    it("is invalid when passwords don't match", done => {
+    it("is invalid when passwords don't match", (done) => {
       instance = getInstance({
         initialValues: {
           password: 'a',
@@ -714,7 +776,7 @@ describe('createForm', () => {
         },
       });
 
-      subscribeOnce(instance.errors).then(errors => {
+      subscribeOnce(instance.errors).then((errors) => {
         const errorValues = nonEmpty(Object.values(errors));
         expect(errorValues.length).toBe(0);
       });
@@ -722,7 +784,7 @@ describe('createForm', () => {
       instance
         .handleSubmit()
         .then(() => subscribeOnce(instance.errors))
-        .then(errors => {
+        .then((errors) => {
           const errorValues = nonEmpty(Object.values(errors));
           expect(errorValues.length).toBe(1);
           expect(errors.passwordConfirmation).toBe("Passwords don't match!");
@@ -730,7 +792,7 @@ describe('createForm', () => {
         .then(done);
     });
 
-    it('is valid when passwords match', done => {
+    it('is valid when passwords match', (done) => {
       instance = getInstance({
         initialValues: {
           password: 'a',
@@ -738,7 +800,7 @@ describe('createForm', () => {
         },
       });
 
-      subscribeOnce(instance.errors).then(errors => {
+      subscribeOnce(instance.errors).then((errors) => {
         const errorValues = nonEmpty(Object.values(errors));
         expect(errorValues.length).toBe(0);
       });
@@ -746,7 +808,7 @@ describe('createForm', () => {
       instance
         .handleSubmit()
         .then(() => subscribeOnce(instance.errors))
-        .then(errors => {
+        .then((errors) => {
           const errorValues = nonEmpty(Object.values(errors));
           expect(errorValues.length).toBe(0);
         })
