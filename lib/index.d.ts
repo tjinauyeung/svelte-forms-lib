@@ -3,7 +3,7 @@ import type {SvelteComponentTyped} from 'svelte';
 import type {Readable, Writable} from 'svelte/store';
 import type {ObjectSchema} from 'yup';
 
-export type FormProps<Inf = Record<string, any>> = {
+export type FormProps<Inf = Record<string, unknown>> = {
   context?: FormState;
   initialValues?: Inf;
   onSubmit?: ((values: Inf) => any) | ((values: Inf) => Promise<any>);
@@ -67,25 +67,33 @@ declare function createForm<Inf = Record<string, any>>(formProps: {
 
 declare class Form extends SvelteComponentTyped<
   FormProps,
-  {},
+  Record<string, unknown>,
   {
     default: FormState;
   }
 > {}
 
-declare class Field extends SvelteComponentTyped<FieldProps, {}, {}> {}
+declare class Field extends SvelteComponentTyped<
+  FieldProps,
+  Record<string, unknown>,
+  Record<string, unknown>
+> {}
 
-declare class Textarea extends SvelteComponentTyped<TextareaProps, {}, {}> {}
+declare class Textarea extends SvelteComponentTyped<
+  TextareaProps,
+  Record<string, unknown>,
+  Record<string, unknown>
+> {}
 
 declare class Select extends SvelteComponentTyped<
   SelectProps,
-  {},
+  Record<string, unknown>,
   {default: any}
 > {}
 
 declare class ErrorMessage extends SvelteComponentTyped<
   ErrorProps,
-  {},
+  Record<string, unknown>,
   {default: any}
 > {}
 
