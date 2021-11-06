@@ -54,7 +54,7 @@ type FormState<Inf = Record<string, any>> = {
     isValidating: boolean;
     isModified: boolean;
   }>;
-  handleChange: () => void;
+  handleChange: () => any;
   handleSubmit: () => any;
 };
 
