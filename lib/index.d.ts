@@ -97,4 +97,6 @@ declare class ErrorMessage extends SvelteComponentTyped<
   {default: any}
 > {}
 
-export {createForm, Form, Field, Select, ErrorMessage, Textarea};
+declare const key: {};
+
+export {createForm, key, Form, Field, Select, ErrorMessage, Textarea};
