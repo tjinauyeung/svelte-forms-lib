@@ -11,21 +11,21 @@ export type FormProps<Inf = Record<string, unknown>> = {
   validationSchema?: ObjectSchema<any>;
 } & svelte.JSX.HTMLAttributes<HTMLFormElement>;
 
-type FieldProps = {
+type FieldProperties = {
   name: string;
   type?: string;
   value?: string;
 } & svelte.JSX.HTMLProps<HTMLInputElement>;
 
-type SelectProps = {
+type SelectProperties = {
   name: string;
 } & svelte.JSX.HTMLProps<HTMLSelectElement>;
 
-type ErrorProps = {
+type ErrorProperties = {
   name: string;
 } & svelte.JSX.HTMLProps<HTMLDivElement>;
 
-type TextareaProps = {
+type TextareaProperties = {
   name: string;
 } & svelte.JSX.HTMLProps<HTMLTextAreaElement>;
 
@@ -58,7 +58,7 @@ type FormState<Inf = Record<string, any>> = {
   handleSubmit: (event: Event) => any;
 };
 
-declare function createForm<Inf = Record<string, any>>(formProps: {
+declare function createForm<Inf = Record<string, any>>(formProperties: {
   initialValues: Inf;
   onSubmit: (values: Inf) => any | Promise<any>;
   validate?: (values: Inf) => any | undefined;
@@ -74,25 +74,25 @@ declare class Form extends SvelteComponentTyped<
 > {}
 
 declare class Field extends SvelteComponentTyped<
-  FieldProps,
+  FieldProperties,
   Record<string, unknown>,
   Record<string, unknown>
 > {}
 
 declare class Textarea extends SvelteComponentTyped<
-  TextareaProps,
+  TextareaProperties,
   Record<string, unknown>,
   Record<string, unknown>
 > {}
 
 declare class Select extends SvelteComponentTyped<
-  SelectProps,
+  SelectProperties,
   Record<string, unknown>,
   {default: any}
 > {}
 
 declare class ErrorMessage extends SvelteComponentTyped<
-  ErrorProps,
+  ErrorProperties,
   Record<string, unknown>,
   {default: any}
 > {}
