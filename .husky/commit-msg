@@ -1,6 +1,6 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
-commitlint \
+$(npm bin)/commitlint \
   --help-url="https://github.com/tjinauyeung/svelte-forms-lib/#commit-message-conventions" \
   --edit "$1"
