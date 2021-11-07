@@ -5,11 +5,11 @@ module.exports = {
 
   extends: ['eslint:recommended', 'plugin:unicorn/recommended', 'prettier'],
 
-  rules: {
-    'unicorn/no-reduce': ['off'],
-  },
-
   parser: '@typescript-eslint/parser',
   plugins: ['@typescript-eslint'],
   extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended'],
+
+  rules: {
+    'unicorn/no-array-reduce': ['off'],
+  },
 };
