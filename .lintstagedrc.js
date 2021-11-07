@@ -1,3 +1,3 @@
 module.exports = {
-  '*.{svelte,js,ts}': ['eslint', 'prettier --write'],
+  '*!(.eslintrc).{svelte,js,ts}': ['eslint', 'prettier --write'],
 };
