@@ -54,8 +54,8 @@ type FormState<Inf = Record<string, any>> = {
     isValidating: boolean;
     isModified: boolean;
   }>;
-  handleChange: () => any;
-  handleSubmit: () => any;
+  handleChange: (event: Event) => any;
+  handleSubmit: (event: Event) => any;
 };
 
 declare function createForm<Inf = Record<string, any>>(formProps: {
