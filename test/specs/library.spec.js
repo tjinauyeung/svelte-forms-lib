@@ -650,6 +650,52 @@ describe('createForm', () => {
         expect(errors.country).toBe('');
       });
     });
+
+    it('returns a promise that only resolves when onSubmit resolves - without validation', async () => {
+      // Test case created for reproducing a bug where the onSubmit function
+      // would not get "waited" for when calling handleSubmit manually due to a
+      // missing return statement in handleSubmit.
+      const values = [];
+
+      const {handleSubmit} = createForm({
+        onSubmit: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          values.push(1);
+        },
+      });
+
+      const myOtherHandler = async () => {
+        await handleSubmit();
+        values.push(2);
+      };
+
+      await myOtherHandler();
+
+      // This test case failed before fixing the bug, See top of this test case.
+      expect(values).toEqual([1, 2]);
+    });
+
+    it('returns a promise that only resolves when onSubmit resolves - with validation', async () => {
+      // See test case above.
+      const values = [];
+
+      const {handleSubmit} = createForm({
+        validate: () => true, // Dummy validation just to make sure that code path is taken.
+        onSubmit: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          values.push(1);
+        },
+      });
+
+      const myOtherHandler = async () => {
+        await handleSubmit();
+        values.push(2);
+      };
+
+      await myOtherHandler();
+
+      expect(values).toEqual([1, 2]);
+    });
   });
 
   describe('validateField', () => {
