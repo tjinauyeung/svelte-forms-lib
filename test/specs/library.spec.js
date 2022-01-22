@@ -22,6 +22,7 @@ describe('createForm', () => {
     name: chance.name(),
     email: chance.email(),
     country: chance.country(),
+    date: chance.date(),
   };
   let validationSchema = yup.object().shape({
     name: yup.string().required(),
@@ -63,6 +64,12 @@ describe('createForm', () => {
         expect(values.country).toBe(initialValues.country);
       });
     });
+
+    it('returns an exact initialValues', () => {
+      subscribeOnce(instance.form).then((values) => {
+        expect(values.date).toStrictEqual(initialValues.date);
+      })
+    })
   });
 
   describe('$errors', () => {
