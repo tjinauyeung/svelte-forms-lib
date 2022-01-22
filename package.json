@@ -38,6 +38,7 @@
   "module": "./build/index.mjs",
   "license": "MIT",
   "dependencies": {
+    "@ungap/structured-clone": "^0.3.4",
     "dequal": "^2.0.2"
   },
   "devDependencies": {
