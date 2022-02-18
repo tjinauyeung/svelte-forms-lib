@@ -39,7 +39,7 @@ type FormState<Inf = Record<string, any>> = {
   isValidating: Writable<boolean>;
   isModified: Readable<boolean>;
   updateField: (field: keyof Inf, value: any) => void;
-  updateValidateField: (field: keyof Inf, value: any) => void;
+  updateValidateField: (field: keyof Inf, value: any) => Promise<any>;
   updateTouched: (field: keyof Inf, value: any) => void;
   validateField: (field: keyof Inf) => Promise<any>;
   updateInitialValues: (newValues: Inf) => void;
