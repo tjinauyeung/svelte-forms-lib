@@ -696,6 +696,18 @@ describe('createForm', () => {
 
       expect(values).toEqual([1, 2]);
     });
+
+    it('should reject if onSubmit rejects', async () => {
+      // Test case created for reproducing a bug where a promise rejection in
+      // the onSubmit function would be silently ignored.
+      const {handleSubmit} = createForm({
+        initialValues: {foo: 'bar'},
+        validationSchema: yup.object().shape({foo: yup.string()}),
+        onSubmit: () => Promise.reject('i could not submit'),
+      });
+
+      await expect(handleSubmit()).rejects.toEqual('i could not submit');
+    });
   });
 
   describe('validateField', () => {
