@@ -73,7 +73,7 @@
     "rollup-plugin-commonjs": "10.1.0",
     "rollup-plugin-node-resolve": "5.2.0",
     "rollup-plugin-svelte": "7.1.0",
-    "semantic-release": "^17.4.4",
+    "semantic-release": "^19.0.3",
     "svelte": "3.40.2",
     "svelte-check": "^2.2.3",
     "svelte-fragment-component": "^1.2.0",
