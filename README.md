@@ -19,15 +19,42 @@
 Svelte forms lib is a lightweight library for managing forms in Svelte, with an
 <a href="https://github.com/jaredpalmer/formik" target="_blank">Formik</a> like API.
 
+### Installation
+
+You may need to escape the `#` depending on your shell
+
+```sh
+npm install --save-dev tastyworks/svelte-forms-lib#<git-commit-hash>
+```
+
+or
+
+```sh
+npm install --save-dev tastyworks/svelte-forms-lib\#<git-commit-hash>
+```
+
+#### Local development
+
+Until your PR is merged to master, you can use npm to link your current project to this repository
+
+```sh
+# in the root directory of the target project
+npm link <path to svelte-forms-lib>
+
+# example if repository is located in a sibling folder
+npm link ../svelte-forms-lib
+```
+
+### Release
+
+TBD: determine if semantic-release is worth integrating into CI, (the original repository uses semantic-release for automated package releases)
+
+For now, after your PR is merged to master, use npm to install the dependency with the git commit hash of the commit in master
+
 ### Docs
 
 Visit the <a href="https://svelte-forms-lib-sapper-docs.now.sh" target="_blank">documentation
 website</a> to learn about the API and see examples.
-
-### Contributions
-
-Please feel free to submit any issue as means of feedback or create a PR for bug fixes
-/ wanted features.
 
 #### Commit message conventions
 
@@ -40,6 +67,3 @@ our npm script:
 ```bash
 npm run commit
 ```
-
-### Join as contributor
-See https://github.com/tjinauyeung/svelte-forms-lib/issues/30
