@@ -651,6 +651,19 @@ describe('createForm', () => {
       });
     });
 
+    it('propagates error from onSubmit', async () => {
+      const error = new Error();
+      instance = getInstance({
+        onSubmit: () => {
+          throw error;
+        },
+      });
+
+      await expect(() => {
+        return instance.handleSubmit();
+      }).rejects.toThrow(error);
+    });
+
     it('returns a promise that only resolves when onSubmit resolves - without validation', async () => {
       // Test case created for reproducing a bug where the onSubmit function
       // would not get "waited" for when calling handleSubmit manually due to a
