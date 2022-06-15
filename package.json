@@ -1,5 +1,5 @@
 {
-  "name": "svelte-forms-lib",
+  "name": "@tastyworks/svelte-forms-lib",
   "version": "0.0.0-semantically-released",
   "description": "Svelte forms lib - A lightweight library for managing forms in Svelte v3",
   "typings": "./lib/index.d.ts",
