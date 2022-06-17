@@ -21,16 +21,8 @@ Svelte forms lib is a lightweight library for managing forms in Svelte, with an
 
 ### Installation
 
-You may need to escape the `#` depending on your shell
-
 ```sh
-npm install --save-dev tastyworks/svelte-forms-lib#<git-commit-hash>
-```
-
-or
-
-```sh
-npm install --save-dev tastyworks/svelte-forms-lib\#<git-commit-hash>
+npm install @tastyworks/svelte-forms-lib
 ```
 
 #### Local development
@@ -47,9 +39,8 @@ npm link ../svelte-forms-lib
 
 ### Release
 
-TBD: determine if semantic-release is worth integrating into CI, (the original repository uses semantic-release for automated package releases)
-
-For now, after your PR is merged to master, use npm to install the dependency with the git commit hash of the commit in master
+This project uses [`semantic-release`](https://github.com/semantic-release/semantic-release) and automatically releases new packages
+when a commit is made onto master. After your PR has been merged, check back after CI has completed for the version/package.
 
 ### Docs
 

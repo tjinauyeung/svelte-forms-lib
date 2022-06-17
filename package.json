@@ -29,9 +29,13 @@
     "validation",
     "form-validation"
   ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "release": { "branches": ["master"] },
   "repository": {
     "type": "git",
-    "url": "https://github.com/tjinauyeung/svelte-forms-lib"
+    "url": "https://github.com/tastyworks/svelte-forms-lib"
   },
   "homepage": "https://svelte-forms-lib-sapper-docs.now.sh",
   "main": "./build/index.js",
