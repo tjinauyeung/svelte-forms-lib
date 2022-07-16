@@ -1,6 +1,7 @@
 <script>
   import {getContext} from 'svelte';
   import {key} from './key';
+  import {get} from './utils';
 
   export let name;
   export let type = 'text';
@@ -11,7 +12,7 @@
 <input
   {name}
   {type}
-  value={$form[name]}
+  value={get($form, name)}
   on:change={handleChange}
   on:blur={handleChange}
   {...$$props}
