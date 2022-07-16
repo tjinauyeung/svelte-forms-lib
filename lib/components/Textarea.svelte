@@ -1,6 +1,7 @@
 <script>
   import {getContext} from 'svelte';
   import {key} from './key';
+  import {get} from './utils';
 
   export let name;
 
@@ -8,4 +9,4 @@
 </script>
 
 <!-- prettier-ignore -->
-<textarea {name} on:change={handleChange} on:blur={handleChange} {...$$props}>{$form[name]}</textarea>
+<textarea {name} on:change={handleChange} on:blur={handleChange} {...$$props}>{get($form, name)}</textarea>
