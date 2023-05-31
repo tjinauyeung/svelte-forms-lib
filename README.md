@@ -27,7 +27,7 @@ npm install @tastyworks/svelte-forms-lib
 
 #### Local development
 
-Until your PR is merged to master, you can use npm to link your current project to this repository
+Until your PR is merged to main, you can use npm to link your current project to this repository
 
 ```sh
 # in the root directory of the target project
@@ -40,7 +40,7 @@ npm link ../svelte-forms-lib
 ### Release
 
 This project uses [`semantic-release`](https://github.com/semantic-release/semantic-release) and automatically releases new packages
-when a commit is made onto master. After your PR has been merged, check back after CI has completed for the version/package.
+when a commit is made onto main. After your PR has been merged, check back after CI has completed for the version/package.
 
 ### Docs
 

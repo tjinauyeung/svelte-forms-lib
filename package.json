@@ -32,7 +32,7 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"
   },
-  "release": { "branches": ["master"] },
+  "release": { "branches": ["main"] },
   "repository": {
     "type": "git",
     "url": "https://github.com/tastyworks/svelte-forms-lib"
