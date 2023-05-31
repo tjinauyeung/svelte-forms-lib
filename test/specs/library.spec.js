@@ -766,7 +766,7 @@ describe('createForm', () => {
         wantsSomething: yup.boolean(),
         what: yup.string().when('wantsSomething', {
           is: true,
-          then: yup.string().required(),
+          then: () => yup.string().required(),
         }),
       });
     });
