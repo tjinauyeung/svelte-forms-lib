@@ -734,6 +734,84 @@ describe('createForm', () => {
         .then(done);
     });
   });
+
+  describe('validateForm', () => {
+    it('validates form when validationSchema is provided', async (done) => {
+      instance = getInstance({
+        initialValues: {
+          name: '',
+          email: '',
+          country: '',
+        },
+      });
+
+      subscribeOnce(instance.errors).then((errors) => {
+        const errorValues = nonEmpty(Object.values(errors));
+        expect(errorValues.length).toBe(0);
+      });
+
+      await instance
+        .validateForm()
+        .then(() => subscribeOnce(instance.errors))
+        .then((errors) => nonEmpty(Object.values(errors)))
+        .then((errors) => expect(errors.length).toBe(3));
+
+      instance.form.set({
+        name: chance.name(),
+        email: '',
+        country: '',
+      });
+
+      instance
+        .validateForm()
+        .then(() => subscribeOnce(instance.errors))
+        .then((errors) => nonEmpty(Object.values(errors)))
+        .then((errors) => expect(errors.length).toBe(2))
+        .then(done);
+    });
+
+    it('returns errors', async (done) => {
+      instance = getInstance({
+        initialValues: {
+          name: '',
+          email: '',
+          country: '',
+        },
+      });
+
+      await instance
+        .validateForm()
+        .then((errors) => expect(Object.values(errors).length).toBe(3))
+        .then(done);
+    });
+
+    it('validates given a validate function', async (done) => {
+      const errorMessage = 'this field is invalid';
+
+      const instance = createForm({
+        initialValues: {
+          nested: {
+            foo: '',
+          },
+        },
+        validate: (values) => {
+          let errs = {
+            nested: {},
+          };
+          if (values.nested.foo === '') {
+            errs.nested.foo = errorMessage;
+          }
+          return errs;
+        },
+      });
+
+      instance
+        .validateForm()
+        .then((errors) => expect(errors.nested.foo).toBe(errorMessage))
+        .then(done);
+    });
+  });
+
   describe('updateValidateField', () => {
     it('update and validate a single field', (done) => {
       instance = getInstance({
