@@ -42,6 +42,7 @@ export type FormState<Inf = Record<string, any>> = {
   updateValidateField: (field: keyof Inf, value: any) => Promise<any>;
   updateTouched: (field: keyof Inf, value: any) => void;
   validateField: (field: keyof Inf) => Promise<any>;
+  validateForm: () => Promise<any>;
   updateInitialValues: (newValues: Inf) => void;
   handleReset: () => void;
   state: Readable<{
