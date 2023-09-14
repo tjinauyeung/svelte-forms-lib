@@ -200,18 +200,13 @@ describe('createForm', () => {
       it('handles null guard when schema is nested', async () => {
         const initialValues = {};
         const typeError = 'type error';
-
         const validationSchema = yup.object().shape({
           stringArray: yup.array().of(yup.string().typeError(typeError)),
-          objectArray: yup
-            .array()
-            .of(
-              yup
-                .object()
-                .shape({
-                  foo: yup.array().of(yup.string().typeError(typeError)),
-                }),
-            ),
+          objectArray: yup.array().of(
+            yup.object().shape({
+              foo: yup.array().of(yup.string().typeError(typeError)),
+            }),
+          ),
           nested: yup
             .object()
             .shape({foo: yup.array().of(yup.string().typeError(typeError))}),
@@ -222,7 +217,6 @@ describe('createForm', () => {
         await instance.handleSubmit();
         const $errors = await subscribeOnce(instance.errors);
 
-        expect($errors.nested.foo).not.toBe(typeError);
         expect($errors.nested.foo).toStrictEqual([]);
       });
     });
