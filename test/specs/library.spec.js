@@ -198,19 +198,24 @@ describe('createForm', () => {
       });
 
       it('handles null guard when schema is nested', async () => {
-        const initialValues = {nested: null};
-
+        const initialValues = {};
+        const barRequired = 'bar';
         const validationSchema = yup.object().shape({
           foo: yup.string().required(),
-          nested: yup.object().shape({foo: yup.string().required()}),
+          nested: yup
+            .object()
+            .shape({
+              foo: yup
+                .object()
+                .shape({bar: yup.string().required(barRequired)}),
+            }),
         });
 
         const instance = getInstance({initialValues, validationSchema});
-
         await instance.handleSubmit();
         const $errors = await subscribeOnce(instance.errors);
 
-        expect($errors.nested.foo).toBeUndefined();
+        expect($errors.nested.foo.bar).toBe(barRequired);
       });
     });
   });
