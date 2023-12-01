@@ -29,7 +29,7 @@ type TextareaProperties = {
   name: string;
 } & svelte.JSX.HTMLProps<HTMLTextAreaElement>;
 
-type FormState<Inf = Record<string, any>> = {
+export type FormState<Inf = Record<string, any>> = {
   form: Writable<Inf>;
   errors: Writable<Record<keyof Inf, string>>;
   touched: Writable<Record<keyof Inf, boolean>>;
