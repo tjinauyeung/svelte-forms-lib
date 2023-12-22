@@ -18,7 +18,11 @@
     "build/*",
     "lib/*"
   ],
-  "svelte": "./lib/index.js",
+  "exports": {
+    ".": {
+      "svelte": "./lib/index.js"
+    }
+  },
   "author": "Tjin Au Yeung",
   "browserslist": [
     "last 1 chrome versions"
@@ -38,7 +42,7 @@
   "module": "./build/index.mjs",
   "license": "MIT",
   "dependencies": {
-    "dequal": "^2.0.2"
+    "dequal": "^2.0.3"
   },
   "devDependencies": {
     "@babel/plugin-transform-react-jsx": "^7.14.5",
