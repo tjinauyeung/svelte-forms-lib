@@ -1,7 +1,5 @@
-const path = require('path');
-
-module.exports = {
-  ...require('./jest.common'),
+export default {
+  ...import('./jest.common'),
 
   displayName: 'lint',
 

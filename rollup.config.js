@@ -6,9 +6,9 @@ import typescript from '@rollup/plugin-typescript';
 /**
  * Jest requires a CommonJs import
  */
-const svelteConfig = require('./svelte.config');
+import svelteConfig from './svelte.config.js'
 
-export default {
+export default  {
   input: './lib/index.js',
   output: [
     {

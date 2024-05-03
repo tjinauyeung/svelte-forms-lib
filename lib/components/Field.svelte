@@ -2,8 +2,7 @@
   import {getContext} from 'svelte';
   import {key} from './key';
 
-  export let name;
-  export let type = 'text';
+  let {name, type, ...restProps} = $props();
 
   const {form, handleChange} = getContext(key);
 </script>
@@ -12,7 +11,7 @@
   {name}
   {type}
   value={$form[name]}
-  on:change={handleChange}
-  on:blur={handleChange}
-  {...$$props}
+  onchange={handleChange}
+  onblur={handleChange}
+  {...restProps}
 />

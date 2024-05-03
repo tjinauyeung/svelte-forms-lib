@@ -1,8 +1,8 @@
-const jestCommon = require('./test/config/jest.common');
-const lintProject = require('./test/config/jest.lint');
-const testProject = require('./test/config/jest.test');
+import jestCommon from './test/config/jest.common';
+import lintProject from './test/config/jest.lint';
+import testProject from './test/config/jest.test';
 
-module.exports = {
+export default {
   ...jestCommon,
 
   projects: [testProject, lintProject],

@@ -1,6 +1,6 @@
-const path = require('path');
+import path from 'path';
 
-module.exports = {
+export default {
   rootDir: path.resolve(__dirname, '../..'),
 
   roots: ['<rootDir>/lib', '<rootDir>/test', __dirname],

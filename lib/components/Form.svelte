@@ -3,20 +3,24 @@
   import {createForm} from '../create-form';
   import {key} from './key';
 
-  export let initialValues = {};
-  export let validate = null;
-  export let validationSchema = null;
-  export let onSubmit = () => {
-    throw new Error(
-      'onSubmit is a required property in <Form /> when using the fallback context',
-    );
-  };
-  export let context = createForm({
-    initialValues,
-    onSubmit,
-    validate,
-    validationSchema,
-  });
+  let {
+    initialValues = {},
+    validate = null,
+    validationSchema = null,
+    onSubmit = () => {
+      throw new Error(
+        'onSubmit is a required property in <Form /> when using the fallback context',
+      );
+    },
+    context = createForm({
+      initialValues,
+      onSubmit,
+      validate,
+      validationSchema,
+    }),
+    children,
+    ...restProps
+  } = $props();
 
   const {
     form,
@@ -47,18 +51,18 @@
   });
 </script>
 
-<form on:submit={handleSubmit} {...$$restProps}>
-  <slot
-    {form}
-    {errors}
-    {touched}
-    {state}
-    {handleChange}
-    {handleSubmit}
-    {updateField}
-    {updateInitialValues}
-    {updateTouched}
-    {updateValidateField}
-    {validateField}
-  />
+<form onsubmit={handleSubmit} {...restProps}>
+  {@render children(
+    form,
+    errors,
+    touched,
+    state,
+    handleChange,
+    handleSubmit,
+    updateField,
+    updateInitialValues,
+    updateTouched,
+    updateValidateField,
+    validateField,
+  )}
 </form>

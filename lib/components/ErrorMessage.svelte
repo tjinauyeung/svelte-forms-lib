@@ -2,11 +2,11 @@
   import {getContext} from 'svelte';
   import {key} from './key';
 
-  export let name;
+  let {name, ...restProps} = $props();
 
   const {errors} = getContext(key);
 </script>
 
 {#if $errors[name]}
-  <small {...$$props}>{$errors[name]}</small>
+  <small {...restProps}>{$errors[name]}</small>
 {/if}

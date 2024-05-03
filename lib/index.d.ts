@@ -1,5 +1,5 @@
 /// <reference lib="svelte2tsx" />
-import type {SvelteComponentTyped} from 'svelte';
+import type {SvelteComponent, } from 'svelte';
 import type {Readable, Writable} from 'svelte/store';
 import type {ObjectSchema} from 'yup';
 
@@ -65,7 +65,7 @@ declare function createForm<Inf = Record<string, any>>(formProperties: {
   validationSchema?: ObjectSchema<any>;
 }): FormState<Inf>;
 
-declare class Form extends SvelteComponentTyped<
+declare class Form extends SvelteComponent<
   FormProps,
   Record<string, unknown>,
   {
@@ -73,25 +73,25 @@ declare class Form extends SvelteComponentTyped<
   }
 > {}
 
-declare class Field extends SvelteComponentTyped<
+declare class Field extends SvelteComponent<
   FieldProperties,
   Record<string, unknown>,
   Record<string, unknown>
 > {}
 
-declare class Textarea extends SvelteComponentTyped<
+declare class Textarea extends SvelteComponent<
   TextareaProperties,
   Record<string, unknown>,
   Record<string, unknown>
 > {}
 
-declare class Select extends SvelteComponentTyped<
+declare class Select extends SvelteComponent<
   SelectProperties,
   Record<string, unknown>,
   {default: any}
 > {}
 
-declare class ErrorMessage extends SvelteComponentTyped<
+declare class ErrorMessage extends SvelteComponent<
   ErrorProperties,
   Record<string, unknown>,
   {default: any}

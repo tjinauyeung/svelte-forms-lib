@@ -2,10 +2,10 @@
   import {getContext} from 'svelte';
   import {key} from './key';
 
-  export let name;
+  let {name, ...restProps} = $props();
 
   const {form, handleChange} = getContext(key);
 </script>
 
 <!-- prettier-ignore -->
-<textarea {name} on:change={handleChange} on:blur={handleChange} {...$$props}>{$form[name]}</textarea>
+<textarea {name} onchange={handleChange} onblur={handleChange} {...restProps}>{$form[name]}</textarea>

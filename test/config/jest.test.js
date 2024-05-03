@@ -1,5 +1,5 @@
-module.exports = {
-  ...require('./jest.common'),
+export default {
+  ...import('./jest.common'),
 
   collectCoverageFrom: ['<rootDir>/lib/**/*.js'],
 
