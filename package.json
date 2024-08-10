@@ -19,6 +19,11 @@
     "lib/*"
   ],
   "svelte": "./lib/index.js",
+  "exports": {
+    ".": {
+        "svelte": "./lib/index.js"
+    }
+  },
   "author": "Tjin Au Yeung",
   "browserslist": [
     "last 1 chrome versions"
