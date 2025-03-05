@@ -88,5 +88,14 @@
     "commitizen": {
       "path": "./node_modules/cz-conventional-changelog"
     }
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "svelte": "./build/index.mjs",
+      "import": "./build/index.mjs",
+      "require": "./build/index.js",
+      "default": "./build/index.mjs"
+    }
   }
 }
